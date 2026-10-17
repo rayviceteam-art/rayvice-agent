@@ -144,6 +144,34 @@ def _notify_summary(summary):
         pass
 
 
+def drafts_text(limit=3, body_chars=600):
+    """Recent drafts (text + media link) — owner review ke liye."""
+    c = db.connect()
+    rows = c.execute("""SELECT d.id, d.platform, d.hook, d.body, d.cta, d.hashtags, d.status,
+                               q.status queue_status, m.url media_url
+                        FROM social_drafts d
+                        LEFT JOIN social_queue q ON q.draft_id = d.id
+                        LEFT JOIN social_media m ON m.id = d.media_id
+                        ORDER BY d.rowid DESC LIMIT ?""", (limit,)).fetchall()
+    c.close()
+    if not rows:
+        return "Koi draft nahi hai bhai — `social run` bolo."
+    out = ["📝 Recent drafts:"]
+    for r in rows:
+        tags = f" → {r['queue_status']}" if r["queue_status"] else ""
+        out.append(f"\n[{r['platform'].upper()}] {r['id']} ({r['status']}{tags})")
+        out.append(f"Hook: {r['hook']}")
+        body = r["body"] or ""
+        out.append(body[:body_chars] + ("…" if len(body) > body_chars else ""))
+        if r["cta"]:
+            out.append(f"CTA: {r['cta']}")
+        if r["hashtags"]:
+            out.append(f"Tags: {str(r['hashtags'])[:200]}")
+        if r["media_url"]:
+            out.append(f"🖼 {r['media_url']}")
+    return "\n".join(out)[:3900]
+
+
 def status_text():
     c = db.connect()
     last = c.execute("SELECT * FROM social_runs ORDER BY started DESC LIMIT 1").fetchone()

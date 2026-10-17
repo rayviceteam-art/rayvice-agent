@@ -271,6 +271,17 @@ def t_status_text():
     assert isinstance(e, str) and e
 
 
+def t_drafts_text():
+    from social import pipeline
+    c = db.connect()
+    row = c.execute("SELECT id FROM social_drafts ORDER BY rowid DESC LIMIT 1").fetchone()
+    c.close()
+    out = pipeline.drafts_text(limit=2)
+    assert out and "Recent drafts" in out, out
+    if row:
+        assert row["id"] in out, "latest draft id draft list me hona chahiye"
+
+
 def t_parse_command_slash():
     import telegram_bot
     cmd, arg = telegram_bot.parse_command("/approve a_12345678")
@@ -301,6 +312,7 @@ ok("x-blocked", t_x_blocked)
 ok("pipeline-mocked", t_pipeline_mocked)
 ok("pipeline-orphan-recovery", t_pipeline_orphan_recovery)
 ok("status-text", t_status_text)
+ok("drafts-text", t_drafts_text)
 ok("parse-command-slash", t_parse_command_slash)
 
 try:

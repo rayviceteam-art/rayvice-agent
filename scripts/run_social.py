@@ -35,6 +35,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tick", action="store_true")
     ap.add_argument("--status", action="store_true")
+    ap.add_argument("--drafts", action="store_true", help="recent draft texts + media links")
     ap.add_argument("--errors", action="store_true")
     ap.add_argument("--week", action="store_true")
     ap.add_argument("--verify", action="store_true")
@@ -49,6 +50,9 @@ def main():
 
     if args.status:
         print(pipeline.status_text())
+        return 0
+    if args.drafts:
+        print(pipeline.drafts_text())
         return 0
     if args.errors:
         print(pipeline.errors_text())
