@@ -1,0 +1,14 @@
+# Rayvice Agent — NEVER commit real secrets
+.env
+data/*.db
+!data/social.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+data/usage.json
+data/backups/
+logs/*.log
+__pycache__/
+*.pyc
+.venv/
+venv/

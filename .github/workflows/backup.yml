@@ -1,0 +1,27 @@
+name: Daily Backup
+
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Snapshot social DB
+        run: |
+          mkdir -p data/backups
+          cp -f data/social.db "data/backups/social-$(date -u +%Y%m%d).db" 2>/dev/null || echo "no social.db yet"
+      - name: Upload backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: social-backup-${{ github.run_id }}
+          path: data/backups/
+          retention-days: 30
+          if-no-files-found: warn

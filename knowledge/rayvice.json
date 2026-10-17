@@ -1,0 +1,12 @@
+{
+  "company": "Rayvice",
+  "positioning": "Rayvice is automated billing, rate-splitting, and compliance software for independent Australian NDIS sole traders.",
+  "audience": ["independent support workers", "sole-trader support providers", "independent disability support workers", "sole traders managing own NDIS billing", "small independent NDIS service providers"],
+  "geography": "Australia",
+  "pricing_aud_per_month": "approximately 24 to 44",
+  "trial": "9-day free trial, no credit card required",
+  "core_pains": ["invoices", "rate calculations", "NDIS pricing rules", "rate splits", "compliance work", "billing errors", "rejected invoices", "manual spreadsheets"],
+  "site": "https://www.rayvice.com",
+  "backend": "https://rayvice-backend.onrender.com",
+  "caution": "Do not invent features, customer numbers, testimonials, revenue, partnerships, certifications, NDIS endorsements."
+}

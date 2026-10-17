@@ -1,0 +1,149 @@
+{
+  "events": [
+    {
+      "kind": "research",
+      "detail": "0 signals",
+      "result": "stored"
+    },
+    {
+      "kind": "hunt",
+      "detail": "0 opportunities",
+      "result": "queued for owner"
+    },
+    {
+      "kind": "hunt",
+      "detail": "0 opportunities",
+      "result": "queued for owner"
+    },
+    {
+      "kind": "research",
+      "detail": "0 signals",
+      "result": "stored"
+    },
+    {
+      "kind": "hunt",
+      "detail": "0 opportunities",
+      "result": "queued for owner"
+    },
+    {
+      "kind": "research",
+      "detail": "0 signals",
+      "result": "stored"
+    },
+    {
+      "kind": "hunt",
+      "detail": "0 opportunities",
+      "result": "queued for owner"
+    },
+    {
+      "kind": "research",
+      "detail": "0 signals",
+      "result": "stored"
+    },
+    {
+      "kind": "hunt",
+      "detail": "0 opportunities",
+      "result": "queued for owner"
+    },
+    {
+      "kind": "research",
+      "detail": "0 signals",
+      "result": "stored"
+    },
+    {
+      "kind": "hunt",
+      "detail": "0 opportunities",
+      "result": "queued for owner"
+    },
+    {
+      "kind": "hunt",
+      "detail": "8 opportunities",
+      "result": "queued for owner"
+    },
+    {
+      "kind": "hunt",
+      "detail": "6 opportunities",
+      "result": "queued for owner"
+    },
+    {
+      "kind": "research",
+      "detail": "0 signals",
+      "result": "stored"
+    },
+    {
+      "kind": "hunt",
+      "detail": "8 opportunities",
+      "result": "queued for owner"
+    },
+    {
+      "kind": "research",
+      "detail": "12 signals",
+      "result": "stored"
+    },
+    {
+      "kind": "hunt",
+      "detail": "8 opportunities",
+      "result": "queued for owner"
+    },
+    {
+      "kind": "research",
+      "detail": "12 signals",
+      "result": "stored"
+    },
+    {
+      "kind": "hunt",
+      "detail": "8 opportunities",
+      "result": "queued for owner"
+    },
+    {
+      "kind": "research",
+      "detail": "12 signals",
+      "result": "stored"
+    },
+    {
+      "kind": "hunt",
+      "detail": "8 opportunities",
+      "result": "queued for owner"
+    },
+    {
+      "kind": "research",
+      "detail": "12 signals",
+      "result": "stored"
+    },
+    {
+      "kind": "hunt",
+      "detail": "8 opportunities",
+      "result": "queued for owner"
+    },
+    {
+      "kind": "research",
+      "detail": "12 signals",
+      "result": "stored"
+    },
+    {
+      "kind": "hunt",
+      "detail": "8 opportunities",
+      "result": "queued for owner"
+    },
+    {
+      "kind": "research",
+      "detail": "12 signals",
+      "result": "stored"
+    },
+    {
+      "kind": "hunt",
+      "detail": "8 opportunities",
+      "result": "queued for owner"
+    },
+    {
+      "kind": "research",
+      "detail": "12 signals",
+      "result": "stored"
+    },
+    {
+      "kind": "hunt",
+      "detail": "8 opportunities",
+      "result": "queued for owner"
+    }
+  ]
+}
