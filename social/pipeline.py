@@ -8,7 +8,7 @@ import uuid
 import config
 from logs_sys import audit
 from social import calendar, db, generator, media, publish_queue
-from social.platforms import capabilities, get_adapter
+from social.platforms import capabilities, enabled_platforms, get_adapter
 
 PLATFORMS_WITH_MEDIA = {"instagram"}
 
@@ -69,7 +69,7 @@ def daily_tick(dry_run=None, force_window=False, notify=True):
             plan = calendar.plan_for()
             idea_id, _ = _store_idea(plan)
             plan["idea_id"] = idea_id
-            platforms = [p for p in config.SOCIAL_PLATFORMS if p != "x"]
+            platforms = enabled_platforms(config.SOCIAL_PLATFORMS)
             if "reddit" in platforms and not (config.REDDIT_CLIENT_ID and config.SOCIAL_REDDIT_SUBS):
                 platforms.remove("reddit")
             for idx, platform in enumerate(platforms):
@@ -90,9 +90,12 @@ def daily_tick(dry_run=None, force_window=False, notify=True):
                     continue
                 if platform in PLATFORMS_WITH_MEDIA and not gen.get("media_id"):
                     draft_data = gen.get("draft", {})
-                    img = media.generate_image(draft_data.get("image_prompt", ""),
-                                               title=(draft_data.get("hook", "") or plan["topic"])[:90],
-                                               subtitle=(draft_data.get("cta", "") or "")[:120])
+                    title = (draft_data.get("hook", "") or plan["topic"])[:90]
+                    subtitle = (draft_data.get("cta", "") or "")[:120]
+                    if plan.get("feature_key"):
+                        img = media.generate_feature_image(plan["feature_key"], title=title, subtitle=subtitle)
+                    else:
+                        img = media.generate_image(draft_data.get("image_prompt", ""), title=title, subtitle=subtitle)
                     if img.get("ok"):
                         publish_queue.attach_media(draft_id, img["media_id"], img.get("url", ""))
                         summary["media"].append({platform: img["media_id"], "provider": img["provider"]})

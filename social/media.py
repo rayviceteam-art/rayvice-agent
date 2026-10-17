@@ -108,6 +108,90 @@ def render_branded_card(title, subtitle="", footer="Rayvice", out_path=None, siz
     return out_path
 
 
+SCREENSHOTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                               "assets", "screenshots")
+
+
+def find_screenshot(feature_key):
+    """assets/screenshots/<key>.{png,jpg,jpeg,webp} — optional product screenshot."""
+    if not feature_key:
+        return None
+    for ext in ("png", "jpg", "jpeg", "webp"):
+        p = os.path.join(SCREENSHOTS_DIR, f"{feature_key}.{ext}")
+        if os.path.exists(p):
+            return p
+    return None
+
+
+def render_screenshot_card(screenshot_path, title="", subtitle="", footer="Rayvice",
+                           out_path=None, size=(1080, 1080)):
+    """Branded frame + real product screenshot (feature spotlight posts)."""
+    from PIL import Image, ImageDraw
+    os.makedirs((os.path.dirname(out_path) if out_path else "") or MEDIA_DIR, exist_ok=True)
+    out_path = out_path or os.path.join(MEDIA_DIR, f"shot_{uuid.uuid4().hex[:10]}.png")
+    img = Image.new("RGB", size, BRAND_BG)
+    d = ImageDraw.Draw(img)
+    w, h = size
+
+    bar = Image.new("RGB", (w, 14), BRAND_ACCENT)
+    bd = ImageDraw.Draw(bar)
+    for x in range(w):
+        t = x / max(1, w - 1)
+        col = tuple(int(BRAND_ACCENT[i] + (BRAND_BLUE[i] - BRAND_ACCENT[i]) * t) for i in range(3))
+        bd.line([(x, 0), (x, 14)], fill=col)
+    img.paste(bar, (0, 0))
+
+    did_icon = False
+    if os.path.exists(ICON_PATH):
+        try:
+            icon = Image.open(ICON_PATH).convert("RGBA").resize((90, 90), Image.LANCZOS)
+            mask = Image.new("L", (90, 90), 0)
+            ImageDraw.Draw(mask).rounded_rectangle([0, 0, 89, 89], radius=20, fill=255)
+            img.paste(icon, (70, 56), mask)
+            did_icon = True
+        except Exception:
+            did_icon = False
+    tx = 186 if did_icon else 70
+    d.text((tx, 62), "Rayvice", font=_font(44), fill=BRAND_FG)
+    d.text((tx + 2, 118), "NDIS admin, simplified", font=_font(24), fill=BRAND_MUTED)
+
+    f_title = _font(52)
+    lines = textwrap.wrap(title or "", width=34)[:2]
+    y = 190
+    for ln in lines:
+        d.text((70, y), ln, font=f_title, fill=BRAND_FG)
+        y += 66
+
+    area_top = y + 16
+    area_bottom = h - (170 if subtitle else 116)
+    area_h = max(120, area_bottom - area_top)
+    shot = Image.open(screenshot_path).convert("RGBA")
+    sw, sh = shot.size
+    scale = min((w - 140) / sw, area_h / sh)
+    nw, nh = max(1, int(sw * scale)), max(1, int(sh * scale))
+    shot = shot.resize((nw, nh), Image.LANCZOS)
+    x0, y0 = (w - nw) // 2, area_top + (area_h - nh) // 2
+    mask = Image.new("L", (nw, nh), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, nw - 1, nh - 1], radius=18, fill=255)
+    img.paste(shot, (x0, y0), mask)
+    d.rounded_rectangle([x0 - 1, y0 - 1, x0 + nw, y0 + nh], radius=18, outline=BRAND_BLUE, width=3)
+
+    if subtitle:
+        f_sub = _font(30)
+        sub_lines = textwrap.wrap(subtitle, width=48)[:2]
+        py = h - 158
+        d.rounded_rectangle([56, py - 22, w - 56, py + 24 + 42 * len(sub_lines)], radius=18, fill=BRAND_PANEL)
+        y2 = py
+        for ln in sub_lines:
+            d.text((86, y2), ln, font=f_sub, fill=BRAND_MUTED)
+            y2 += 42
+
+    d.text((70, h - 80), footer, font=_font(30), fill=BRAND_ACCENT)
+    d.text((w - 320, h - 80), "rayvice.com", font=_font(30), fill=BRAND_BLUE)
+    img.save(out_path, "PNG", optimize=True)
+    return out_path
+
+
 def _pollinations(prompt, width=1080, height=1080, timeout=90):
     prompt = (prompt or "").strip()
     if prompt and "photo" not in prompt.lower():
@@ -207,6 +291,43 @@ def generate_image(prompt, title="", kind="image", register=True, subtitle=""):
         c = db.connect()
         c.execute("INSERT INTO social_media VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
                   (mid, ts, kind, rel, url, used, (prompt or "")[:500],
+                   info["width"], info["height"], info["bytes"], sha, "READY", ""))
+        c.commit()
+        c.close()
+    return {"ok": True, "media_id": mid, "path": path, "rel_path": rel, "url": url,
+            "provider": used, "sha256": sha, "width": info["width"], "height": info["height"],
+            "bytes": info["bytes"]}
+
+
+def generate_feature_image(feature_key, title="", subtitle="", register=True, kind="feature"):
+    """Feature spotlight image: real screenshot (assets/screenshots/<key>.*) ho to
+    branded frame me, warna same info ka branded card. Returns dict (generate_image jaisa)."""
+    shot = find_screenshot(feature_key)
+    if not shot:
+        return generate_image(title, title=title, kind=kind, register=register, subtitle=subtitle)
+
+    os.makedirs(MEDIA_DIR, exist_ok=True)
+    mid = "m_" + uuid.uuid4().hex[:10]
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    cand = os.path.join(MEDIA_DIR, f"{mid}.png")
+    try:
+        path = render_screenshot_card(shot, title=title or feature_key, subtitle=subtitle, out_path=cand)
+        used = "screenshot"
+    except Exception:
+        return generate_image(title, title=title, kind=kind, register=register, subtitle=subtitle)
+
+    ok, info = validate_image(path)
+    if not ok:
+        return generate_image(title, title=title, kind=kind, register=register, subtitle=subtitle)
+
+    with open(path, "rb") as f:
+        sha = hashlib.sha256(f.read()).hexdigest()
+    rel = os.path.relpath(path, os.path.dirname(MEDIA_DIR)).replace("\\", "/")
+    url = public_url(os.path.basename(path))
+    if register:
+        c = db.connect()
+        c.execute("INSERT INTO social_media VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                  (mid, ts, kind, rel, url, used, f"feature:{feature_key}"[:500],
                    info["width"], info["height"], info["bytes"], sha, "READY", ""))
         c.commit()
         c.close()

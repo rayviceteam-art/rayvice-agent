@@ -38,7 +38,7 @@ WEEKLY_THEMES = {
     3: ("mistakes", "Common administrative mistakes"),
     4: ("faq", "Frequently asked questions"),
     5: ("checklist", "Practical checklists and templates"),
-    6: ("responsible-promo", "Responsible Rayvice promotion / week recap"),
+    6: ("product-feature", "Rayvice product feature spotlight"),
 }
 
 # Topic pools — practical, specific, no invented rules/prices. Price rules may
@@ -95,6 +95,27 @@ TOPIC_POOLS = {
     ],
 }
 
+# Product feature spotlights — Sunday rotation. Screenshot optional:
+# assets/screenshots/<key>.png mile to real app look frame me use hoga,
+# warna same info ka branded card banega. Claims simple + honest rakhe gaye.
+PRODUCT_FEATURES = [
+    {"key": "scheduling",
+     "topic": "Feature spotlight: scheduling support shifts without spreadsheets",
+     "benefit": "Plan shifts with times, locations and support details in one place."},
+    {"key": "invoicing",
+     "topic": "Feature spotlight: turning completed shifts into clean invoices",
+     "benefit": "Create invoices from your logged shifts — no billing from memory."},
+    {"key": "dashboard",
+     "topic": "Feature spotlight: your week at a glance on the dashboard",
+     "benefit": "Upcoming shifts, completed work and invoice status in one view."},
+    {"key": "rate-splits",
+     "topic": "Feature spotlight: keeping split shift rates accurate",
+     "benefit": "Day, evening and weekend splits stay consistent across invoice lines."},
+    {"key": "compliance",
+     "topic": "Feature spotlight: records that stay organised and audit-ready",
+     "benefit": "Shift notes and records stored neatly, exportable when needed."},
+]
+
 
 def theme_for(day=None):
     """Returns (category, theme_title) for a local date (default: aaj Sydney me)."""
@@ -113,8 +134,14 @@ def plan_for(day=None):
     """Aaj ka plan: ek idea dict (category, theme, topic, local date)."""
     d = day or today_local()
     category, theme = theme_for(d)
-    return {"date": d.isoformat(), "category": category, "theme": theme,
+    plan = {"date": d.isoformat(), "category": category, "theme": theme,
             "topic": pick_topic(category, d)}
+    if category == "product-feature":
+        feat = PRODUCT_FEATURES[d.toordinal() % len(PRODUCT_FEATURES)]
+        plan["topic"] = feat["topic"]
+        plan["feature_key"] = feat["key"]
+        plan["feature_benefit"] = feat["benefit"]
+    return plan
 
 
 def week_plan(start=None):

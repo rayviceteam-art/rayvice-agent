@@ -58,6 +58,9 @@ def build_messages(platform, plan):
     user = (f"Platform: {platform}. {_RULES.get(platform, '')}\n"
             f"Content theme: {plan.get('theme')}. Topic: {plan.get('topic')}. "
             f"Category: {plan.get('category')}.")
+    if plan.get("feature_key"):
+        user += (f" Feature benefit to convey: {plan.get('feature_benefit', '')} "
+                 "Describe only this generic capability — no invented UI details, numbers or screenshots.")
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 

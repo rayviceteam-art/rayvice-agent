@@ -1,21 +1,25 @@
 # DEPLOYMENT STATUS — Rayvice Social Automation
 
-Updated: 2026-10-17 · Owner: Rayvice · Budget: ₹0 (no card)
+Updated: 2026-10-18 · Owner: Rayvice · Budget: ₹0 (no card)
 
-## Current state: `DEPLOYED=YES · DRY_RUN=YES · PUBLISHING=DRY-RUN ONLY`
+## Current state: `DEPLOYED=YES · DRY_RUN=NO · PUBLISHING=LIVE (FB+IG)`
+
+> **LIVE ACTIVATED (owner approval, 2026-10-18):** dry-run review complete.
+> First live posts: **Mon 19 Oct, 9:00 AM Sydney** — automatic, Sydney windows 9:00/12:30/17:30.
+> Rollback: Telegram `pause`, ya `SOCIAL_DRYRUN=true` GH var flip — instant wapas dry-run.
 
 | Layer | Component | Status |
 |---|---|---|
-| App | `social/` pipeline + CLI | ✅ COMPLETE + TESTED (dry-run pass, 2026-10-17) |
+| App | `social/` pipeline + CLI | ✅ COMPLETE + TESTED (26 tests pass, 2026-10-18) |
 | Repo | github.com/rayviceteam-art/rayvice-agent (public) | ✅ LIVE — push verified, commit-back verified |
-| Tests | `test_social.py` 23/23, `test_all.py` 22/22 · CI Tests workflow | ✅ PASS (local + GitHub Actions) |
+| Tests | `test_social.py` 26/26, `test_all.py` 22/22 · CI Tests workflow | ✅ PASS (local + GitHub Actions) |
 | Scheduler | GitHub Actions hourly cron + dispatch | ✅ RUNNING — CI tick verified (3 drafts, Pollinations image, dry publish 2, Telegram alert) |
 | Secrets | OPENROUTER, TELEGRAM×3, TAVILY + 3 vars | ✅ SET via API (values kabhi repo me nahi) |
 | DB | `data/social.db` commit-back | ✅ VERIFIED (chore: social state commit pushed by workflow) |
-| Media | Branded card (real logo, Pillow) default; Pollinations AI opt-in | ✅ card v2 verified (brand colors + logo); Pollinations live tested earlier |
+| Media | Branded card (real logo, Pillow) default; screenshot-frame + Pollinations AI opt-in | ✅ card v2 verified; feature spotlight system live |
 | Telegram | notifications + commands | ✅ notify path live-verified (local + CI); TELEGRAM_ALLOWED_USER_ID set |
-| Platforms | Meta (FB Page: Rayvice + IG @rayviceofficial) | ✅ CONNECTED + VERIFIED (read + container test) — LIVE enable owner approval pe |
-| Platforms | Reddit / LinkedIn | 🔒 BLOCKED — credentials (owner, Phase 5) |
+| Platforms | Meta (FB Page: Rayvice + IG @rayviceofficial) | ✅ **LIVE ENABLED** — first real posts 19 Oct 9:00 Sydney |
+| Platforms | Reddit / LinkedIn | 🔒 BLOCKED — credentials (owner, Phase 5); unconfigured platforms auto-skip |
 | Platforms | X | ❌ NOT AVAILABLE ON FREE TIER (no workaround) |
 
 ## Environment matrix
@@ -35,6 +39,13 @@ Updated: 2026-10-17 · Owner: Rayvice · Budget: ₹0 (no card)
 3. Run ke baad workflow `data/social.db` + `media/` ko repo me commit-back karta hai (state persistence).
 4. Failures: Telegram alert + `data/social.db` me error log + exponential backoff retry (max 5, phir dead-letter).
 5. Owner commands: Telegram `social status|run|week|errors|retry` ya `pause`/`resume`.
+
+## Feature spotlight posts (product features)
+
+- Har **Sunday** ek product feature post — rotation: scheduling → invoicing → dashboard → rate-splits → compliance.
+- Real screenshot mile (`assets/screenshots/<key>.png|jpg|jpeg|webp`) to branded frame me use hota hai; warna same content ka branded card (post rukta nahi).
+- Screenshots **demo data** ke saath lena — koi real participant name/number nahi (validators PII block karte hain).
+- Details: `assets/screenshots/README.md`.
 
 ## Backup & restore
 

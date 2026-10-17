@@ -96,6 +96,37 @@ def t_media_public_url():
     config.MEDIA_PUBLIC_BASE = saved
 
 
+def t_calendar_product_feature():
+    from datetime import date
+    p = calendar.plan_for(date(2026, 10, 18))  # Sunday (Sydney)
+    assert p["category"] == "product-feature", p
+    keys = [f["key"] for f in calendar.PRODUCT_FEATURES]
+    assert p["feature_key"] in keys and p.get("feature_benefit"), p
+    assert "Feature spotlight" in p["topic"]
+
+
+def t_feature_image():
+    import tempfile
+    from PIL import Image
+    saved = media.SCREENSHOTS_DIR
+    try:
+        media.SCREENSHOTS_DIR = "/nonexistent_screenshots_dir_xyz"
+        r = media.generate_feature_image("scheduling", title="Feature: scheduling test", register=False)
+        assert r["ok"] and r["provider"] == "card", r
+        os.remove(r["path"])
+        d = tempfile.mkdtemp()
+        Image.new("RGB", (1200, 800), (40, 60, 80)).save(os.path.join(d, "scheduling.png"))
+        media.SCREENSHOTS_DIR = d
+        r2 = media.generate_feature_image("scheduling", title="Feature: scheduling test", register=False)
+        okv, info = media.validate_image(r2["path"])
+        assert r2["ok"] and r2["provider"] == "screenshot" and okv, (r2, info)
+        os.remove(r2["path"])
+        os.remove(os.path.join(d, "scheduling.png"))
+        os.rmdir(d)
+    finally:
+        media.SCREENSHOTS_DIR = saved
+
+
 def t_generator_mocked():
     import model_router
     real = model_router.run_task
@@ -217,6 +248,7 @@ def t_x_blocked():
 def t_pipeline_mocked():
     import model_router
     from social import pipeline
+    from social.platforms import get_adapter
     real = model_router.run_task
     model_router.run_task = lambda *a, **k: type("R", (), {
         "ok": True, "model": "mock",
@@ -224,6 +256,9 @@ def t_pipeline_mocked():
                 '", "cta": "Double-check official sources", "hashtags": ["ndis"], "image_prompt": "calendar"}'})()
     saved_platforms = config.SOCIAL_PLATFORMS
     config.SOCIAL_PLATFORMS = ["facebook"]
+    fb_cls = type(get_adapter("facebook"))
+    real_conf = fb_cls.configured
+    fb_cls.configured = lambda self: True  # test me credentials nahi hote
     try:
         res = pipeline.daily_tick(dry_run=True, force_window=True, notify=False)
         assert res["ok"], res
@@ -231,11 +266,13 @@ def t_pipeline_mocked():
     finally:
         model_router.run_task = real
         config.SOCIAL_PLATFORMS = saved_platforms
+        fb_cls.configured = real_conf
 
 
 def t_pipeline_orphan_recovery():
     import model_router
     from social import pipeline
+    from social.platforms import get_adapter
     real = model_router.run_task
     model_router.run_task = lambda *a, **k: type("R", (), {
         "ok": True, "model": "mock",
@@ -243,6 +280,9 @@ def t_pipeline_orphan_recovery():
                 '", "cta": "Check the guide", "hashtags": ["ndis"], "image_prompt": "desk"}'})()
     saved_platforms = config.SOCIAL_PLATFORMS
     config.SOCIAL_PLATFORMS = ["linkedin"]
+    li_cls = type(get_adapter("linkedin"))
+    real_conf = li_cls.configured
+    li_cls.configured = lambda self: True  # test me credentials nahi hote
     try:
         c = db.connect()
         c.execute("DELETE FROM social_queue")
@@ -261,6 +301,7 @@ def t_pipeline_orphan_recovery():
     finally:
         model_router.run_task = real
         config.SOCIAL_PLATFORMS = saved_platforms
+        li_cls.configured = real_conf
 
 
 def t_status_text():
@@ -299,6 +340,8 @@ ok("validators-duplicate", t_validators_duplicate)
 ok("calendar", t_calendar)
 ok("media-card", t_media_card)
 ok("media-public-url", t_media_public_url)
+ok("calendar-product-feature", t_calendar_product_feature)
+ok("feature-image", t_feature_image)
 ok("generator-mocked", t_generator_mocked)
 ok("generator-junk", t_generator_junk)
 ok("queue-idempotent", t_queue_idempotent)
