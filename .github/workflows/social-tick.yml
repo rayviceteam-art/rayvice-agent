@@ -38,6 +38,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GITHUB_REPO: ${{ github.repository }}
       MEDIA_PUBLIC_BASE: ${{ vars.MEDIA_PUBLIC_BASE }}
+      IMAGE_PROVIDER: ${{ vars.IMAGE_PROVIDER || 'card' }}
       SOCIAL_PLATFORMS: ${{ vars.SOCIAL_PLATFORMS || 'facebook,instagram,linkedin,reddit' }}
       SOCIAL_DRYRUN: ${{ vars.SOCIAL_DRYRUN || 'true' }}
       SOCIAL_TZ: Australia/Sydney

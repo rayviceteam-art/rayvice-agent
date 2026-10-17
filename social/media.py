@@ -19,10 +19,15 @@ from social import db
 
 MEDIA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "media")
 
-BRAND_BG = (15, 32, 56)       # deep navy
+BRAND_BG = (11, 17, 22)        # near-black (matches app icon)
+BRAND_PANEL = (18, 28, 36)     # panel tint
 BRAND_FG = (255, 255, 255)
-BRAND_ACCENT = (64, 196, 180)  # teal
-BRAND_MUTED = (170, 184, 200)
+BRAND_ACCENT = (224, 138, 60)  # brand orange (from app icon)
+BRAND_BLUE = (75, 127, 166)    # brand steel blue
+BRAND_MUTED = (150, 165, 178)
+
+ICON_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                         "assets", "brand", "app-icon.png")
 
 _FONT_CANDIDATES = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -44,7 +49,7 @@ def _font(size):
 
 
 def render_branded_card(title, subtitle="", footer="Rayvice", out_path=None, size=(1080, 1080)):
-    """Clean educational card: wordmark + wrapped title. Temporary text identity."""
+    """Brand card v2: real logo icon + brand colors + wrapped title."""
     from PIL import Image, ImageDraw
     os.makedirs((os.path.dirname(out_path) if out_path else "") or MEDIA_DIR, exist_ok=True)
     out_path = out_path or os.path.join(MEDIA_DIR, f"card_{uuid.uuid4().hex[:10]}.png")
@@ -52,37 +57,63 @@ def render_branded_card(title, subtitle="", footer="Rayvice", out_path=None, siz
     d = ImageDraw.Draw(img)
     w, h = size
 
-    # accent bar
-    d.rectangle([0, 0, w, 14], fill=BRAND_ACCENT)
-    # wordmark
-    d.text((70, 60), "Rayvice", font=_font(52), fill=BRAND_FG)
-    d.text((70, 128), "Administration, simplified", font=_font(30), fill=BRAND_MUTED)
+    # signature top bar: orange -> blue gradient strip
+    bar = Image.new("RGB", (w, 14), BRAND_ACCENT)
+    bd = ImageDraw.Draw(bar)
+    for x in range(w):
+        t = x / max(1, w - 1)
+        col = tuple(int(BRAND_ACCENT[i] + (BRAND_BLUE[i] - BRAND_ACCENT[i]) * t) for i in range(3))
+        bd.line([(x, 0), (x, 14)], fill=col)
+    img.paste(bar, (0, 0))
 
-    # title (wrapped, vertically centered-ish)
-    f_title = _font(64)
-    lines = textwrap.wrap(title or "", width=26)[:6]
-    y = int(h * 0.32)
+    # logo icon (rounded) + wordmark
+    did_icon = False
+    if os.path.exists(ICON_PATH):
+        try:
+            icon = Image.open(ICON_PATH).convert("RGBA").resize((132, 132), Image.LANCZOS)
+            mask = Image.new("L", (132, 132), 0)
+            ImageDraw.Draw(mask).rounded_rectangle([0, 0, 131, 131], radius=28, fill=255)
+            img.paste(icon, (70, 76), mask)
+            did_icon = True
+        except Exception:
+            did_icon = False
+    tx = 232 if did_icon else 70
+    d.text((tx, 88), "Rayvice", font=_font(58), fill=BRAND_FG)
+    d.text((tx + 3, 158), "NDIS admin, simplified", font=_font(28), fill=BRAND_MUTED)
+
+    # hook text block
+    f_title = _font(66)
+    lines = textwrap.wrap(title or "", width=25)[:6]
+    y = int(h * 0.30)
     for ln in lines:
         d.text((70, y), ln, font=f_title, fill=BRAND_FG)
-        y += 82
+        y += 86
+    # accent underline after text
+    d.rounded_rectangle([72, y + 14, 72 + 140, y + 22], radius=4, fill=BRAND_ACCENT)
 
-    # subtitle (smaller, bottom area)
+    # subtitle panel
     if subtitle:
         f_sub = _font(34)
-        sub_lines = textwrap.wrap(subtitle, width=42)[:3]
-        y2 = h - 250
+        sub_lines = textwrap.wrap(subtitle, width=44)[:3]
+        py = h - 268
+        d.rounded_rectangle([56, py - 34, w - 56, py + 34 + 48 * len(sub_lines)], radius=22, fill=BRAND_PANEL)
+        y2 = py
         for ln in sub_lines:
-            d.text((70, y2), ln, font=f_sub, fill=BRAND_MUTED)
-            y2 += 46
+            d.text((86, y2), ln, font=f_sub, fill=BRAND_MUTED)
+            y2 += 48
 
-    d.text((70, h - 90), footer, font=_font(30), fill=BRAND_ACCENT)
+    d.text((70, h - 80), footer, font=_font(30), fill=BRAND_ACCENT)
+    d.text((w - 320, h - 80), "rayvice.com", font=_font(30), fill=BRAND_BLUE)
     img.save(out_path, "PNG", optimize=True)
     return out_path
 
 
 def _pollinations(prompt, width=1080, height=1080, timeout=90):
+    prompt = (prompt or "").strip()
+    if prompt and "photo" not in prompt.lower():
+        prompt += ", professional corporate photography, natural light, realistic, Australian small business, no text, no watermark, no logos"
     url = ("https://image.pollinations.ai/prompt/" + urllib.parse.quote(prompt[:900]) +
-           f"?width={width}&height={height}&nologo=true&safe=true")
+           f"?width={width}&height={height}&nologo=true&safe=true&model=flux")
     req = urllib.request.Request(url, headers={"User-Agent": config.REDDIT_USER_AGENT or "rayvice-agent"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         data = r.read()
@@ -135,11 +166,11 @@ def verify_public_url(url, timeout=30):
         return False, str(e)[:200]
 
 
-def generate_image(prompt, title="", kind="image", register=True):
+def generate_image(prompt, title="", kind="image", register=True, subtitle=""):
     """Provider chain -> local file -> DB record. Returns dict."""
     os.makedirs(MEDIA_DIR, exist_ok=True)
     mid = "m_" + uuid.uuid4().hex[:10]
-    provider = config.IMAGE_PROVIDER or "pillow"
+    provider = config.IMAGE_PROVIDER or "card"
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     path, used = None, ""
 
@@ -160,8 +191,8 @@ def generate_image(prompt, title="", kind="image", register=True):
 
     if not path:
         cand = os.path.join(MEDIA_DIR, f"{mid}.png")
-        path = render_branded_card(title or prompt or "Rayvice", out_path=cand)
-        used = "pillow"
+        path = render_branded_card(title or prompt or "Rayvice", subtitle=subtitle, out_path=cand)
+        used = "card"
 
     ok, info = validate_image(path)
     if not ok:

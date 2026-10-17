@@ -12,7 +12,7 @@ Updated: 2026-10-17 · Owner: Rayvice · Budget: ₹0 (no card)
 | Scheduler | GitHub Actions hourly cron + dispatch | ✅ RUNNING — CI tick verified (3 drafts, Pollinations image, dry publish 2, Telegram alert) |
 | Secrets | OPENROUTER, TELEGRAM×3, TAVILY + 3 vars | ✅ SET via API (values kabhi repo me nahi) |
 | DB | `data/social.db` commit-back | ✅ VERIFIED (chore: social state commit pushed by workflow) |
-| Media | Pollinations + Pillow fallback → raw.githubusercontent URLs | ✅ Pollinations live in CI (m_21a78e0768); Pillow local verified |
+| Media | Branded card (real logo, Pillow) default; Pollinations AI opt-in | ✅ card v2 verified (brand colors + logo); Pollinations live tested earlier |
 | Telegram | notifications + commands | ✅ notify path live-verified (local + CI); TELEGRAM_ALLOWED_USER_ID set |
 | Platforms | Meta / Reddit / LinkedIn | 🔒 BLOCKED — credentials (owner, Phase 5) |
 | Platforms | X | ❌ NOT AVAILABLE ON FREE TIER (no workaround) |

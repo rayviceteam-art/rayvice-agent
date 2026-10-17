@@ -62,7 +62,7 @@ SOCIAL_PLATFORMS = [p.strip().lower() for p in os.environ.get("SOCIAL_PLATFORMS"
 # Reddit: sirf in subreddits me, aur tab hi jab rules allow kare.
 SOCIAL_REDDIT_SUBS = [s.strip() for s in os.environ.get("SOCIAL_REDDIT_SUBS", "").split(",") if s.strip()]
 # Media: image provider chain + public base (GitHub raw) publishing APIs ke liye.
-IMAGE_PROVIDER = os.environ.get("IMAGE_PROVIDER", "pollinations").lower()
+IMAGE_PROVIDER = os.environ.get("IMAGE_PROVIDER", "card").lower()
 IMAGE_API_KEY = os.environ.get("IMAGE_API_KEY", "")
 MEDIA_PUBLIC_BASE = os.environ.get("MEDIA_PUBLIC_BASE", "").rstrip("/")
 # Retry policy

@@ -89,8 +89,10 @@ def daily_tick(dry_run=None, force_window=False, notify=True):
                     summary["generated"].append({platform: gen.get("error", "skipped")})
                     continue
                 if platform in PLATFORMS_WITH_MEDIA and not gen.get("media_id"):
-                    img = media.generate_image(gen.get("draft", {}).get("image_prompt", ""),
-                                               title=(gen.get("draft", {}).get("hook", "") or plan["topic"])[:90])
+                    draft_data = gen.get("draft", {})
+                    img = media.generate_image(draft_data.get("image_prompt", ""),
+                                               title=(draft_data.get("hook", "") or plan["topic"])[:90],
+                                               subtitle=(draft_data.get("cta", "") or "")[:120])
                     if img.get("ok"):
                         publish_queue.attach_media(draft_id, img["media_id"], img.get("url", ""))
                         summary["media"].append({platform: img["media_id"], "provider": img["provider"]})
