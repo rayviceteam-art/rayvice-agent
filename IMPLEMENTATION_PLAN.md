@@ -11,7 +11,7 @@ Repo: `rayviceteam-art/rayvice-agent` (public) · Owner: Rayvice · Budget: ₹0
 | 2 | Architecture + local build (social package, DB, adapters, docs) | **COMPLETE** (2026-10-17) |
 | 3 | Automated tests + dry-run pipeline | **TESTED** (23/23 social tests, 22/22 core, real dry-run + CI dry-run pass) |
 | 4 | GitHub deploy: repo + Actions cron + secrets | **RUNNING** — repo live, secrets set, hourly tick verified end-to-end (2026-10-17) |
-| 5 | Platform OAuth connections (Meta/LinkedIn/Reddit apps) | **BLOCKED** — owner app creation pending; X = NOT AVAILABLE ON FREE TIER |
+| 5 | Platform OAuth connections (Meta/LinkedIn/Reddit apps) | **PARTIAL** — Meta (FB+IG) ✅ connected+verified 2026-10-17; Reddit/LinkedIn pending; X = NOT AVAILABLE ON FREE TIER |
 | 6 | Production publishing enable | **NOT STARTED** — requires Phase 5 + owner approval |
 | 7 | Scheduler reliability + backup + recovery verify | **PARTIAL** — backup artifact + commit-back verified; long-term soak pending |
 

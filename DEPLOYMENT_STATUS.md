@@ -14,7 +14,8 @@ Updated: 2026-10-17 · Owner: Rayvice · Budget: ₹0 (no card)
 | DB | `data/social.db` commit-back | ✅ VERIFIED (chore: social state commit pushed by workflow) |
 | Media | Branded card (real logo, Pillow) default; Pollinations AI opt-in | ✅ card v2 verified (brand colors + logo); Pollinations live tested earlier |
 | Telegram | notifications + commands | ✅ notify path live-verified (local + CI); TELEGRAM_ALLOWED_USER_ID set |
-| Platforms | Meta / Reddit / LinkedIn | 🔒 BLOCKED — credentials (owner, Phase 5) |
+| Platforms | Meta (FB Page: Rayvice + IG @rayviceofficial) | ✅ CONNECTED + VERIFIED (read + container test) — LIVE enable owner approval pe |
+| Platforms | Reddit / LinkedIn | 🔒 BLOCKED — credentials (owner, Phase 5) |
 | Platforms | X | ❌ NOT AVAILABLE ON FREE TIER (no workaround) |
 
 ## Environment matrix
