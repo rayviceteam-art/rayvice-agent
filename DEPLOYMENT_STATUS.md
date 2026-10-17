@@ -2,16 +2,18 @@
 
 Updated: 2026-10-17 · Owner: Rayvice · Budget: ₹0 (no card)
 
-## Current state: `DEPLOYED=NO · DRY_RUN=YES · PUBLISHING=NONE`
+## Current state: `DEPLOYED=YES · DRY_RUN=YES · PUBLISHING=DRY-RUN ONLY`
 
 | Layer | Component | Status |
 |---|---|---|
 | App | `social/` pipeline + CLI | ✅ COMPLETE + TESTED (dry-run pass, 2026-10-17) |
-| Tests | `test_social.py` 22/22, `test_all.py` 22/22 | ✅ PASS |
-| Scheduler | GitHub Actions hourly cron | ⏳ workflow file ready — repo push + secrets pending |
-| DB | `data/social.db` (social state) | ✅ local; GH Actions me persist karne ke liye commit-back step workflow me hai |
-| Media | `media/` + raw.githubusercontent URLs | ✅ local Pillow card verified; public URL verify `MEDIA_PUBLIC_BASE` set hone par |
-| Telegram | notifications + commands | ✅ notify path live-verified (audit me `telegram` entry dekho); ⚠️ `TELEGRAM_ALLOWED_USER_ID` set karna pending (auth tighten) |
+| Repo | github.com/rayviceteam-art/rayvice-agent (public) | ✅ LIVE — push verified, commit-back verified |
+| Tests | `test_social.py` 23/23, `test_all.py` 22/22 · CI Tests workflow | ✅ PASS (local + GitHub Actions) |
+| Scheduler | GitHub Actions hourly cron + dispatch | ✅ RUNNING — CI tick verified (3 drafts, Pollinations image, dry publish 2, Telegram alert) |
+| Secrets | OPENROUTER, TELEGRAM×3, TAVILY + 3 vars | ✅ SET via API (values kabhi repo me nahi) |
+| DB | `data/social.db` commit-back | ✅ VERIFIED (chore: social state commit pushed by workflow) |
+| Media | Pollinations + Pillow fallback → raw.githubusercontent URLs | ✅ Pollinations live in CI (m_21a78e0768); Pillow local verified |
+| Telegram | notifications + commands | ✅ notify path live-verified (local + CI); TELEGRAM_ALLOWED_USER_ID set |
 | Platforms | Meta / Reddit / LinkedIn | 🔒 BLOCKED — credentials (owner, Phase 5) |
 | Platforms | X | ❌ NOT AVAILABLE ON FREE TIER (no workaround) |
 
@@ -56,10 +58,10 @@ Updated: 2026-10-17 · Owner: Rayvice · Budget: ₹0 (no card)
 
 ## Blockers (owner action)
 
-1. **GitHub PAT** (`repo` + `workflow`) → repo push + Actions enable. **Phase 4 unlock.**
-2. `TELEGRAM_ALLOWED_USER_ID` (owner ki Telegram numeric ID) → command authorization tighten.
-3. Platform apps (Phase 5): Reddit (~10 min), Meta (~15 min), LinkedIn (~15 min). X: skip.
-4. Frontend repo (`Rayvice-frontend`) ke git config me **leaked PAT** — revoke + remote URL clean (execution mere haath me jab owner karne bole).
+1. ~~GitHub PAT~~ ✅ done (repo + workflow scope) — Phase 4 unlock.
+2. ~~`TELEGRAM_ALLOWED_USER_ID`~~ ✅ set (2002821626).
+3. Platform apps (Phase 5): Reddit (~10 min), Meta (~15 min), LinkedIn (~15 min). X: skip (paid only).
+4. Frontend repo (`Rayvice-frontend`) leaked PAT — owner ne abhi defer kiya; **revoke recommended** (jo bhi ho, hamari pipeline us token ko use nahi karti).
 
 ## Rollback
 

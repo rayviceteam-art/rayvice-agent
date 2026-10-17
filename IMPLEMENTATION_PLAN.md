@@ -9,11 +9,11 @@ Repo: `rayviceteam-art/rayvice-agent` (public) · Owner: Rayvice · Budget: ₹0
 |---|---|---|
 | 1 | Environment audit + free hosting eligibility | **COMPLETE** (2026-10-17) |
 | 2 | Architecture + local build (social package, DB, adapters, docs) | **COMPLETE** (2026-10-17) |
-| 3 | Automated tests + dry-run pipeline | **TESTED** (22/22 social tests, 22/22 existing tests, real dry-run tick pass) |
-| 4 | GitHub deploy: repo + Actions cron + secrets | **BLOCKED** — GitHub PAT pending (owner action) |
+| 3 | Automated tests + dry-run pipeline | **TESTED** (23/23 social tests, 22/22 core, real dry-run + CI dry-run pass) |
+| 4 | GitHub deploy: repo + Actions cron + secrets | **RUNNING** — repo live, secrets set, hourly tick verified end-to-end (2026-10-17) |
 | 5 | Platform OAuth connections (Meta/LinkedIn/Reddit apps) | **BLOCKED** — owner app creation pending; X = NOT AVAILABLE ON FREE TIER |
-| 6 | Production publishing enable | **NOT STARTED** — requires Phase 4+5 + owner approval |
-| 7 | Scheduler reliability + backup + recovery verify | **NOT STARTED** — needs Phase 4 |
+| 6 | Production publishing enable | **NOT STARTED** — requires Phase 5 + owner approval |
+| 7 | Scheduler reliability + backup + recovery verify | **PARTIAL** — backup artifact + commit-back verified; long-term soak pending |
 
 ## Phase 1 findings (audit)
 
@@ -34,13 +34,13 @@ Repo: `rayviceteam-art/rayvice-agent` (public) · Owner: Rayvice · Budget: ₹0
 - Telegram: `/status /queue /errors /pause /resume` + `social ...` commands + owner user-ID authorization
 - Docs: is file, `docs/platform-capabilities.md`, `DEPLOYMENT_STATUS.md`, ARCHITECTURE update
 
-## Phase 4 — GitHub deploy (pending)
+## Phase 4 — GitHub deploy (DONE 2026-10-17)
 
-1. Owner: naya PAT (`repo` + `workflow` scope) — purana frontend wala token revoke karna recommended.
-2. Repo create `rayviceteam-art/rayvice-agent` (public) + push.
-3. GH Secrets: OPENROUTER_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, tavily, (platform tokens jab available ho).
-4. Workflow `social-tick.yml`: hourly cron + manual dispatch; commit-back `data/social.db` + `media/`.
-5. Ek scheduled dry-run execution verify (real run, dry_run=true).
+1. ✅ Owner PAT (repo + workflow scope) — set as local `GITHUB_TOKEN` (.env, gitignored).
+2. ✅ Repo create `rayviceteam-art/rayvice-agent` (public) + push.
+3. ✅ GH Secrets: OPENROUTER_API_KEY, TELEGRAM_BOT_TOKEN/CHAT_ID/ALLOWED_USER_ID, TAVILY_API_KEY + vars (MEDIA_PUBLIC_BASE, SOCIAL_PLATFORMS, SOCIAL_DRYRUN=true) — API se set, values kabhi repo me nahi.
+4. ✅ Workflow `social-tick.yml`: hourly cron + manual dispatch; verified run: 3 drafts (FB/IG/LI), Pollinations image, dry publishes, state commit-back, backup artifact.
+5. ✅ CI Tests workflow pass (28+22 tests).
 
 ## Phase 5 — platform connections (pending, owner zरूरी)
 
@@ -55,12 +55,12 @@ Repo: `rayviceteam-art/rayvice-agent` (public) · Owner: Rayvice · Budget: ₹0
 
 - [x] Project files created · [x] Environment audited · [x] Architecture documented
 - [x] Free hosting eligibility checked (documented) · [x] App/workflow implementation completed
-- [x] Database + migrations working · [x] Secrets protected (.env gitignored, no secrets in DB/repo)
-- [x] AI generation tested (mock + real dry-run) · [x] Media pipeline tested (Pillow card verified)
-- [ ] Telegram bot configured + authorization tested (notify path verified; allowed-user-ID set karna pending)
+- [x] Database + migrations working · [x] Secrets protected (.env gitignored, no secrets in DB/repo; GH Secrets via API)
+- [x] AI generation tested (mock + real dry-run, local + CI) · [x] Media pipeline tested (Pollinations live + Pillow card verified)
+- [x] Telegram bot configured + authorization tested (notify path verified local + CI; allowed-user-ID set)
 - [x] Each platform's API requirements documented (platform-capabilities.md)
 - [ ] Each connected platform authenticated + tested (Phase 5)
-- [x] Dry-run publication completed (real tick, dry_run=1) · [x] Duplicate-post protection verified (tests)
-- [x] Retry + failure handling tested (backoff/dead-letter tests) · [x] Scheduling/timezone behaviour verified (calendar tests)
-- [ ] Deployment health checked (Phase 4) · [x] Backup/restore procedures documented (DEPLOYMENT_STATUS.md)
+- [x] Dry-run publication completed (real tick, dry_run=1/2) · [x] Duplicate-post protection verified (tests)
+- [x] Retry + failure handling tested (backoff/dead-letter tests) · [x] Scheduling/timezone behaviour verified (calendar tests + CI tick)
+- [x] Deployment health checked (CI tick success, state commit-back, artifacts) · [x] Backup/restore procedures documented (DEPLOYMENT_STATUS.md)
 - [ ] Production publishing enabled **only with approval** · [x] Remaining blockers + costs documented
