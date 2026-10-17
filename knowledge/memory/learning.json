@@ -144,6 +144,16 @@
       "kind": "hunt",
       "detail": "8 opportunities",
       "result": "queued for owner"
+    },
+    {
+      "kind": "research",
+      "detail": "12 signals",
+      "result": "stored"
+    },
+    {
+      "kind": "hunt",
+      "detail": "8 opportunities",
+      "result": "queued for owner"
     }
   ]
 }
