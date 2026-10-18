@@ -69,7 +69,12 @@
       "text": "test pricing question",
       "kind": "PRICING",
       "source": "test"
+    },
+    {
+      "text": "test pricing question",
+      "kind": "PRICING",
+      "source": "test"
     }
   ],
-  "updated_at": "2026-10-17T18:27:06.361182Z"
+  "updated_at": "2026-10-18T06:48:45.711543Z"
 }
