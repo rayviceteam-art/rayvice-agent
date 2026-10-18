@@ -54,6 +54,9 @@ DDL = [
       key TEXT PRIMARY KEY, value TEXT, updated TEXT)""",
     """CREATE TABLE IF NOT EXISTS social_locks(
       name TEXT PRIMARY KEY, owner TEXT, acquired_utc TEXT, expires_utc TEXT)""",
+    """CREATE TABLE IF NOT EXISTS social_group_kit(
+      date TEXT PRIMARY KEY, ts TEXT, sent_at TEXT, status TEXT,
+      prompt_version TEXT, payload TEXT)""",
 ]
 
 INDEXES = [

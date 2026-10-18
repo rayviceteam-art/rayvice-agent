@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.environ["SOCIAL_DB_PATH"] = "data/test_social.db"
 os.environ.setdefault("AGENT_DB_PATH", "data/test_agent.db")
 os.environ["SOCIAL_PLATFORMS"] = "facebook,instagram"
+os.environ["AUTOMATION_ENABLED"] = "true"
 for f in ("data/test_social.db", "data/test_social.db-wal", "data/test_social.db-shm"):
     try:
         os.remove(f)
@@ -331,6 +332,40 @@ def t_parse_command_slash():
     assert cmd2 == "MESSAGE"
 
 
+def t_group_kit_template():
+    from social import group_kit
+    r = group_kit.build_kit(force=True, use_llm=False)
+    assert r["ok"], r
+    kit = r["kit"]
+    assert len(kit["posts"]) == 5 and len(kit["comments"]) == 5 and len(kit["ig_captions"]) == 2, kit
+    blob = " ".join(p["text"] for p in kit["posts"]) + " ".join(c["reply"] for c in kit["comments"])
+    assert "rayvice" not in blob.lower(), "group posts/comments me promo nahi hona chahiye"
+
+
+def t_group_kit_dedup():
+    from social import group_kit
+    r1 = group_kit.build_kit(force=True, use_llm=False)
+    r2 = group_kit.build_kit(use_llm=False)
+    assert r2["ok"] and r2["kit"]["posts"][0]["text"] == r1["kit"]["posts"][0]["text"], \
+        "same date pe same kit return hona chahiye"
+
+
+def t_group_kit_rotation():
+    from social import group_kit
+    p1 = [p[0] for p in group_kit.pillars_for("2026-10-18")]
+    p2 = [p[0] for p in group_kit.pillars_for("2026-10-19")]
+    assert p1 != p2, "roz rotation change hona chahiye"
+
+
+def t_group_kit_messages_fit():
+    from social import group_kit
+    r = group_kit.build_kit(force=True, use_llm=False)
+    msgs = group_kit.format_messages(r)
+    assert msgs, "messages khali nahi hone chahiye"
+    for m in msgs:
+        assert len(m) <= 3900, f"message too long: {len(m)}"
+
+
 ok("schema", t_schema)
 ok("validators-limits", t_validators_limits)
 ok("validators-banned", t_validators_banned)
@@ -357,6 +392,10 @@ ok("pipeline-orphan-recovery", t_pipeline_orphan_recovery)
 ok("status-text", t_status_text)
 ok("drafts-text", t_drafts_text)
 ok("parse-command-slash", t_parse_command_slash)
+ok("group-kit-template", t_group_kit_template)
+ok("group-kit-dedup", t_group_kit_dedup)
+ok("group-kit-rotation", t_group_kit_rotation)
+ok("group-kit-messages-fit", t_group_kit_messages_fit)
 
 try:
     os.remove("data/test_social.db")

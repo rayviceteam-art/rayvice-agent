@@ -65,6 +65,9 @@ jobs:
             python3 scripts/run_social.py --tick
           fi
 
+      - name: Group content kit (Telegram)
+        run: python3 scripts/run_group_kit.py --send
+
       - name: Commit state back (social.db + media)
         run: |
           git config user.name "rayvice-bot"

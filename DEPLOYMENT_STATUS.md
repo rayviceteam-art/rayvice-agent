@@ -80,3 +80,12 @@ Updated: 2026-10-18 · Owner: Rayvice · Budget: ₹0 (no card)
 - Code: `git revert` / `git checkout <prev>` — kuch bhi irreversible nahi.
 - Publishing: `social pause` + Actions workflow disable (`gh workflow disable` ya UI).
 - Hard stop: workflow file delete — pipeline band, data safe.
+
+## Group Content Kit (2026-10-18)
+
+- Meta Group API closed hai — groups me auto-join/auto-post/auto-comment **possible nahi** (koshish = Page ban).
+- Solution: `social/group_kit.py` — roz subah (Sydney 7-10) Telegram pe kit: 5 text posts (6-pillar rotation, roz badalta) + 5-6 comment replies + 2 IG captions. Owner khud groups me paste karta hai.
+- Posts/comments me ZERO promo (brand = owner profile); soft CTA sirf IG captions me.
+- Dedup: last 30 kits se Jaccard overlap check; LLM fail -> hand-written template kit (kit kabhi khali nahi).
+- Commands: `social kit` (aaj ka bhejo) | `social kit regen` | `social kit resend`. Runner: `scripts/run_group_kit.py --send` (CI tick ke saath chalta hai).
+- Posting (social publish) filhaal **paused**: `AUTOMATION_ENABLED=false` + `SOCIAL_DRYRUN=true` (GH var bhi).

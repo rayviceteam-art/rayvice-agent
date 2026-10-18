@@ -270,6 +270,16 @@ def handle_owner_text(text):
             return "\n".join(lines)[:3900]
         if rest.startswith("draft"):
             return _sp.drafts_text()[:3900]
+        if rest.startswith("kit"):
+            from social import group_kit as _gk
+            sub = rest.split(None, 1)[1] if len(rest.split(None, 1)) > 1 else ""
+            res = _gk.build_kit(force=("regen" in sub))
+            if not res.get("ok"):
+                return f"Kit error: {res.get('error')}"[:3900]
+            if res.get("already_sent") and "resend" not in sub:
+                return "Aaj ka kit bhej diya gaya hai bhai ✅ (naya content: `social kit regen`, dobara bhejna: `social kit resend`)"
+            n = _gk.send_kit(res, resend=("resend" in sub))
+            return f"🗂 Aaj ka group content kit bhej diya ({n} messages, {res.get('source')}). Groups me paste karo bhai!"[:3900]
         if rest.startswith("capab"):
             from social.platforms import capabilities
             return "\n".join(f"• {c['platform']}: configured={c['configured']} free={c['free']} — {(c.get('blocker') or 'OK')[:90]}"
@@ -289,7 +299,7 @@ def handle_owner_text(text):
                 "• draft <topic> | hunt | leads | outreach <lead_id> | followups\n"
                 "• check site | deploy | bugs | analytics | feedback\n"
                 "• schedule | pause | resume | mode <name>\n"
-                "• social status | social drafts | social run | social week | social errors | social retry | social verify\n"
+                "• social status | social drafts | social run | social week | social errors | social retry | social verify | social kit\n"
                 "• APPROVE <id> | REJECT <id>\n"
                 "Seedha bol bhi sakta hai: `aaj kya karu` ya `aaj ka operation chala`.\n"
                 "Kuch samajh na aaye to aise hi likh ke bhej de, mai samajh lunga.")
