@@ -90,8 +90,10 @@ def _handle(sender, subject, body, summary):
 
     lead = store.lead_by_email(sender)
     if not lead:
-        if any(w in low for w in UNSUB_WORDS):
-            store.add_suppression(sender, "unsubscribe reply (unknown)")
+        # Hamare lead nahi (newsletters/marketing ke footer me bhi 'unsubscribe' hota hai).
+        # Sirf chhota, saaf opt-out message ho to suppress karo.
+        if len((body or "").split()) <= 40 and any(w in low for w in UNSUB_WORDS):
+            store.add_suppression(sender, "unsubscribe (short opt-out)")
             summary["unsub"] += 1
         return
 

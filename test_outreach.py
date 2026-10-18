@@ -251,7 +251,21 @@ def t_rank_best():
     assert [c for c, _ in ce] == ["a", "c", "b", "d"], [c for c, _ in ce]
 
 
+def t_scan_ignores_newsletter():
+    from outreach import mailer
+    before = store.suppressed_set()
+    s = {"scanned": 0, "replies": 0, "unsub": 0, "bounces": 0}
+    news = ("Hi, your weekly digest is here. Check out these top reads for your team. "
+            "You are receiving this because you signed up. Click here to unsubscribe. "
+            "Manage your preferences in your account settings at any time. " * 2)
+    mailer._handle("noreply@medium.com", "Weekly digest", news, s)
+    assert "noreply@medium.com" not in store.suppressed_set() - before, "newsletter ko unsubscribe maana"
+    mailer._handle("random@someone.com", "Re: hi", "please unsubscribe me, thanks", s)
+    assert "random@someone.com" in store.suppressed_set(), "chhota clear opt-out ignore ho gaya"
+
+
 ok("schema", t_schema)
+ok("scan-ignores-newsletter", t_scan_ignores_newsletter)
 ok("sent-local-cap", t_sent_local_cap)
 ok("query-rotation", t_query_rotation)
 ok("rank-best", t_rank_best)
