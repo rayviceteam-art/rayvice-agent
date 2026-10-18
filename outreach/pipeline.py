@@ -3,20 +3,22 @@ import config
 from social import db
 from outreach import compose, mailer, sources, store
 
-_GENERIC_NAME_PREFIX = ("ndis provider", "ndis service", "ndis agency", "disability service",
-                        "disability support", "home", "welcome", "homepage", "home page",
-                        "best ndis", "ndis support", "registered ndis")
+_GENERIC_NAME = ("ndis provider", "ndis service", "ndis agency", "ndis registered",
+                 "registered ndis", "disability service", "disability support",
+                 "home", "welcome", "homepage", "home page", "contact us", "contact",
+                 "best ndis", "ndis support", "support services", "our services", "services")
 
 
 def _clean_name(name, domain):
     n = (name or "").strip()
-    for sep in ("|", "–", "—", " - "):
+    for sep in ("|", ":", "–", "—", " - "):
         if sep in n:
             parts = [p.strip() for p in n.split(sep) if p.strip()]
-            nong = [p for p in parts if not any(p.lower().startswith(g) for g in _GENERIC_NAME_PREFIX)]
+            nong = [p for p in parts if not any(g in p.lower() for g in _GENERIC_NAME)]
             n = (nong[0] if nong else parts[-1]).strip()
             break
-    if not n or any(n.lower().startswith(g) for g in _GENERIC_NAME_PREFIX):
+    low = n.lower().strip()
+    if not n or any(g == low or low.startswith(g) for g in _GENERIC_NAME):
         return domain.split(".")[0].replace("-", " ").title() or "there"
     return n[:80]
 

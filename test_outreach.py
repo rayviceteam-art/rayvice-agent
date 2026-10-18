@@ -73,6 +73,8 @@ def t_clean_name():
     assert pipeline._clean_name("NDIS Provider | Bright Care Support", "brightcare.com.au") == "Bright Care Support"
     assert pipeline._clean_name("", "brightcare.com.au") == "Brightcare"
     assert pipeline._clean_name("Home", "happyhands.com.au") == "Happyhands"
+    assert pipeline._clean_name("IAC: Registered NDIS Provider in Melbourne", "iac.com.au") == "IAC"
+    assert pipeline._clean_name("Contact", "brightcare.com.au") == "Brightcare"
 
 
 def t_compose_validation():
