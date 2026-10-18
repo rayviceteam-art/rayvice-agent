@@ -113,6 +113,71 @@ def t_format_preview():
     assert "t@test.com.au" in text and "Hi" in text
 
 
+def t_icp_real_provider():
+    text = ("We are a registered NDIS provider offering disability support services and "
+            "support workers for participants across Sydney. Our community access and "
+            "supported independent living supports help you reach your goals.")
+    r = sources.icp_evaluate(text, "brightcare.com.au")
+    assert r["ok"] and r["score"] >= 4, r
+
+
+def t_icp_rejects_directory():
+    text = ("Find an NDIS provider near you. Compare providers, browse providers and read "
+            "reviews in our NDIS provider directory.")
+    assert not sources.icp_evaluate(text, "x.com.au")["ok"]
+
+
+def t_icp_rejects_irrelevant():
+    assert not sources.icp_evaluate("Best coffee in Melbourne, open 7am daily.", "cafe.com.au")["ok"]
+    assert not sources.icp_evaluate("We are a law firm offering legal advice and conveyancing.", "law.com.au")["ok"]
+
+
+def t_icp_footer_noise_allowed():
+    text = ("We provide NDIS disability support services and support workers for participants. "
+            "Our community participation and support coordination supports help you reach goals. "
+            "Rayville Support is a registered NDIS provider. Read about the NDIS Commission. "
+            "Careers: send your resume to our team. * 2")
+    r = sources.icp_evaluate(text, "rayville.com.au")
+    assert r["ok"], r
+
+
+def t_icp_soft_negative_penalty():
+    text = ("NDIS disability support services and support workers for participants, "
+            "community access and supported independent living. Our team includes a lawyer "
+            "for legal advice.")
+    r = sources.icp_evaluate(text, "x.com.au")
+    assert "soft_negatives" in r and r["soft_negatives"], r
+    assert r["ok"], r  # real provider with footer legal link still passes
+
+
+def t_aussie_gate():
+    assert sources._aussie_ok("brightcare.com.au")
+    assert sources._aussie_ok("support.org.au")
+    assert not sources._aussie_ok("support.com")
+    assert not sources._aussie_ok("randomagency.io")
+
+
+def t_retry_no_compose():
+    store.upsert_lead({"name": "RC", "domain": "retry.com.au", "email": "a@retry.com.au"})
+    c = db.connect()
+    lid = c.execute("SELECT id FROM outreach_leads WHERE domain='retry.com.au'").fetchone()["id"]
+    c.close()
+    store.set_lead_status(lid, "NO_COMPOSE", {"error": "AI down"})
+    ds = store.domain_status()
+    assert ds["retry.com.au"] == (lid, "NO_COMPOSE"), ds.get("retry.com.au")
+    # pipeline skip logic: NO_COMPOSE retryable, baaki nahi
+    retryable = [d for d, (_, st) in ds.items() if st == "NO_COMPOSE"]
+    assert "retry.com.au" in retryable
+    rows = store.leads_by_status("NO_COMPOSE", limit=10)
+    assert any(r["domain"] == "retry.com.au" for r in rows)
+
+
+def t_provider_groq_registered():
+    from ai_provider import get_provider
+    p = get_provider("groq")
+    assert p.name == "groq"
+
+
 def t_followup_columns():
     db.ensure_schema()
     c = db.connect()
@@ -164,6 +229,14 @@ ok("suppression", t_suppression)
 ok("message-idempotent", t_message_idempotent)
 ok("send-dryrun", t_send_dryrun_no_network)
 ok("format-preview", t_format_preview)
+ok("icp-real-provider", t_icp_real_provider)
+ok("icp-reject-directory", t_icp_rejects_directory)
+ok("icp-reject-irrelevant", t_icp_rejects_irrelevant)
+ok("aussie-gate", t_aussie_gate)
+ok("icp-footer-noise", t_icp_footer_noise_allowed)
+ok("icp-soft-negative", t_icp_soft_negative_penalty)
+ok("retry-no-compose", t_retry_no_compose)
+ok("provider-groq", t_provider_groq_registered)
 ok("followup-columns", t_followup_columns)
 ok("followup-idempotent", t_followup_idempotent)
 ok("followup-validate", t_followup_validate)

@@ -63,11 +63,63 @@ FREE_MAIL = ("gmail.com", "hotmail.com", "outlook.com", "bigpond.com", "yahoo.co
 CONTACT_PATHS = ["", "contact", "contact-us", "about", "get-in-touch", "contact.html", "contact-us.html"]
 
 QUERIES = [
-    "{state} NDIS support provider contact us",
-    "independent NDIS support worker {state} team contact",
-    "small NDIS provider {state} disability support contact us",
-    "NDIS disability support services {state} registered provider contact",
+    "NDIS registered provider {state} contact us our team",
+    "NDIS disability support services {state} support workers contact",
+    "small NDIS support provider {state} community access contact",
+    "NDIS support coordination {state} provider contact us",
+    "NDIS plan managed self managed provider {state} contact",
+    "independent NDIS support worker team {state} contact email",
 ]
+
+# --- Ideal Customer Profile (ICP) gate ---------------------------------------------------
+# Rayvice ka target: chhota Australian NDIS/disability support provider jiske paas support
+# workers hain. Sirf wahi site pass hogi jisme asli NDIS/support signals hon.
+STRONG_SIGNALS = (
+    "ndis", "support worker", "disability support", "disability service",
+    "plan managed", "plan-managed", "self managed", "self-managed",
+    "support coordination", "community access", "community participation",
+    "psychosocial", "supported independent living", "specialist disability accommodation",
+    "core supports", "core support", "capacity building",
+)
+STRONG_REGEX = (r"\bndis\b", r"\bsil\b", r"\bsda\b", r"\bparticipants?\b")
+MEDIUM_SIGNALS = (
+    "disability", "support services", "care workers", "in home support",
+    "respite", "individual support", "person centred", "person-centered",
+)
+# Ye mile to site target provider nahi (directory / job board) -> seedha reject.
+HARD_NEGATIVES = (
+    "find an ndis provider", "ndis provider directory", "find a provider", "provider directory",
+    "compare providers", "browse providers", "top 10 ndis", "best ndis providers",
+    "recruitment agency", "job vacancies", "jobs available", "apply now", "we are hiring", "job board",
+)
+# Ye mile to points kate jayenge par reject nahi (real provider ke footer/blog me aate hain).
+SOFT_NEGATIVES = (
+    "solicitor", "lawyer", "conveyancing", "legal advice", "tax agent", "bookkeeper",
+    "financial planner", "mortgage broker", "insurance broker",
+)
+
+
+def html_text(html):
+    t = re.sub(r"<script.*?</script>", " ", html or "", flags=re.S | re.I)
+    t = re.sub(r"<style.*?</style>", " ", t, flags=re.S | re.I)
+    t = re.sub(r"<[^>]+>", " ", t)
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def icp_evaluate(text, domain=""):
+    """Return {ok, score, strong, negatives} — site Rayvice ke target provider jaisi hai ya nahi."""
+    t = " " + re.sub(r"\s+", " ", (text or "").lower()) + " "
+    strong = {s for s in STRONG_SIGNALS if s in t}
+    for rx in STRONG_REGEX:
+        if re.search(rx, t):
+            strong.add(rx.strip("\\b"))
+    med = {m for m in MEDIUM_SIGNALS if m in t}
+    negs = [n for n in HARD_NEGATIVES if n in t]
+    soft = [n for n in SOFT_NEGATIVES if n in t]
+    score = min(len(strong), 3) * 3 + min(len(med), 3) - 2 * len(soft)
+    ok = bool(strong) and score >= 4 and not negs
+    return {"ok": ok, "score": score, "strong": sorted(strong), "negatives": negs,
+            "soft_negatives": soft}
 
 
 def _domain(url):
@@ -109,17 +161,18 @@ def _aussie_ok(domain):
 
 
 def _robots(page_html):
+    # Bounded fetch (robotparser.read() me timeout nahi hota -> hang risk).
     try:
         rp = robotparser.RobotFileParser()
         p = urlparse(page_html)
-        rp.set_url(f"{p.scheme}://{p.netloc}/robots.txt")
-        rp.read()
+        txt = _fetch(f"{p.scheme}://{p.netloc}/robots.txt", timeout=6)
+        rp.parse((txt or "").splitlines())
         return rp
     except Exception:
         return None
 
 
-def _fetch(url, timeout=15):
+def _fetch(url, timeout=10):
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; RayviceBot/1.0)"})
         with urllib.request.urlopen(req, timeout=timeout) as r:
@@ -184,29 +237,68 @@ def page_title(html):
     return re.split(r"\s+[|\-–—]\s+", t)[0].strip()[:120]
 
 
-def discover_from_site(domain):
-    """Homepage + contact pages se public business email. Returns (email, source_url, title)."""
+def _fetch_path(base, rp, path):
+    u = base + ("/" + path if path else "")
+    try:
+        if rp and not rp.can_fetch("RayviceBot", u):
+            return None
+    except Exception:
+        pass
+    html = _fetch(u)
+    return (u, html) if html else None
+
+
+def _unreachable():
+    return {"email": "", "source_url": "", "title": "", "text": "",
+            "icp": {"ok": False, "score": 0, "strong": [], "negatives": ["unreachable"]}}
+
+
+def evaluate_site(domain):
+    """Fast path: homepage se hi email + ICP mil jaye to sirf 1 fetch.
+
+    Returns {email, source_url, title, text, icp}. icp.ok=True = real target provider.
+    """
     base = f"https://{domain}"
     rp = _robots(base + "/")
-    pages = []
-    for path in CONTACT_PATHS:
-        u = base + ("/" + path if path else "")
-        try:
-            if rp and not rp.can_fetch("RayviceBot", u):
+    first = _fetch_path(base, rp, "")
+    if not first:
+        return _unreachable()
+    pages = [first]
+    home_text = html_text(first[1])
+    title = page_title(first[1])
+
+    def combined():
+        return " ".join(html_text(h) for _, h in pages)
+
+    icp = icp_evaluate(combined(), domain)
+    email, source_url = "", ""
+    e = best_email(extract_emails(first[1]), domain)
+    if e:
+        email, source_url = e, first[0]
+
+    if not (icp["ok"] and email):
+        for path in ("contact", "contact-us", "about"):
+            got = _fetch_path(base, rp, path)
+            if not got:
                 continue
-        except Exception:
-            pass
-        html = _fetch(u)
-        if html:
-            pages.append((u, html))
-        if len(pages) >= 4:
-            break
-    for u, html in pages:
-        e = best_email(extract_emails(html), domain)
-        if e:
-            title = page_title(html)
-            return e, u, title
-    return "", "", ""
+            pages.append(got)
+            if not email:
+                e = best_email(extract_emails(got[1]), domain)
+                if e:
+                    email, source_url = e, got[0]
+            icp = icp_evaluate(combined(), domain)
+            if icp["ok"] and email:
+                break
+
+    if len(combined().split()) < 60:
+        icp = {**icp, "ok": False, "negatives": icp["negatives"] + ["thin/placeholder page"]}
+    return {"email": email, "source_url": source_url, "title": title, "text": home_text[:600], "icp": icp}
+
+
+def discover_from_site(domain):
+    """Backward-compatible: (email, source_url, title)."""
+    ev = evaluate_site(domain)
+    return ev["email"], ev["source_url"], ev["title"]
 
 
 def find_candidates(states, per_query=8, max_candidates=60):
@@ -220,6 +312,8 @@ def find_candidates(states, per_query=8, max_candidates=60):
                 url = r.get("url", "")
                 d = _domain(url)
                 if not d or d in seen or is_blocked(url):
+                    continue
+                if not _aussie_ok(d):
                     continue
                 seen.add(d)
                 text = r.get("text", "")

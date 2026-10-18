@@ -42,12 +42,22 @@ def run_task(task_type, messages, timeout=60):
     # If route has explicit model list in future, expand here without touching callers.
     res = provider.chat(messages, model=model, timeout=timeout)
     if not res.ok and not res.needs_approval:
-        # try any other free model once
+        # try any other free model once (same provider)
         for m in config.FREE_MODELS:
             if m == model:
                 continue
             r2 = provider.chat(messages, model=m, timeout=timeout)
             if r2.ok:
                 return r2
-        return res
+    if not res.ok:
+        # Different provider fallback: Groq free tier (quota/policy alag hoti hai).
+        try:
+            gp = get_provider("groq")
+            if gp.key:
+                for gm in (config.GROQ_MODELS or [None]):
+                    r3 = gp.chat(messages, model=gm, timeout=timeout)
+                    if r3.ok:
+                        return r3
+        except Exception:
+            pass
     return res

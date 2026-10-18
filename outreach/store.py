@@ -39,6 +39,14 @@ def suppressed_set():
     return {r[0] for r in rows}
 
 
+def leads_by_status(status, limit=10):
+    c = db.connect()
+    rows = c.execute("SELECT * FROM outreach_leads WHERE status=? ORDER BY ts LIMIT ?",
+                     (status, limit)).fetchall()
+    c.close()
+    return rows
+
+
 def lead_by_email(email):
     c = db.connect()
     row = c.execute("SELECT * FROM outreach_leads WHERE lower(email)=?", (email or "",)).fetchone()
@@ -51,6 +59,14 @@ def existing_domains():
     rows = c.execute("SELECT lower(domain) FROM outreach_leads").fetchall()
     c.close()
     return {r[0] for r in rows}
+
+
+def domain_status():
+    """{domain: (lead_id, status)} — retry sirf NO_COMPOSE ke liye."""
+    c = db.connect()
+    rows = c.execute("SELECT id, lower(domain) AS d, status FROM outreach_leads").fetchall()
+    c.close()
+    return {r["d"]: (r["id"], r["status"]) for r in rows if r["d"]}
 
 
 def upsert_lead(lead):
@@ -175,6 +191,8 @@ def stats():
     out = {}
     for label, sql in {
         "leads": "SELECT COUNT(*) FROM outreach_leads",
+        "relevant": "SELECT COUNT(*) FROM outreach_leads WHERE status<>'NOT_RELEVANT'",
+        "not_relevant": "SELECT COUNT(*) FROM outreach_leads WHERE status='NOT_RELEVANT'",
         "with_email": "SELECT COUNT(*) FROM outreach_leads WHERE email<>''",
         "queued": "SELECT COUNT(*) FROM outreach_messages WHERE status='QUEUED'",
         "sent": "SELECT COUNT(*) FROM outreach_messages WHERE status='SENT'",

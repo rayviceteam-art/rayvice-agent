@@ -1,4 +1,6 @@
 """Outreach orchestration: discover -> enrich -> compose -> queue -> send -> scan."""
+from concurrent.futures import ThreadPoolExecutor
+
 import config
 from social import db
 from outreach import compose, mailer, sources, store
@@ -23,37 +25,67 @@ def _clean_name(name, domain):
     return n[:80]
 
 
-def build_daily(count=None, states=None):
-    """N naye leads + personalised emails QUEUE karo. Nothing sent here."""
+def build_daily(count=None, states=None, max_eval=30):
+    """N naye leads + personalised emails QUEUE karo. Nothing sent here.
+
+    Sirf wahi leads jinki site ICP gate pass kare (real NDIS/support provider).
+    """
     count = count or config.OUTREACH_DAILY_CAP
     states = states or config.OUTREACH_STATES
     db.ensure_schema()
-    have = store.existing_domains()
+    prev = store.domain_status()
     supp = store.suppressed_set()
     made, no_email = [], 0
-    for c in sources.find_candidates(states):
+    rejected = 0
+    # Pehle purane NO_COMPOSE leads retry karo (email already known hai, bina re-search).
+    for r in store.leads_by_status("NO_COMPOSE", limit=count):
         if len(made) >= count:
             break
-        if c["domain"] in have:
+        lead = dict(r)
+        if not lead.get("email"):
             continue
-        email, src_url, title = sources.discover_from_site(c["domain"])
+        comp = compose.compose_email(lead)
+        if not comp.get("ok"):
+            continue
+        mid = store.log_message(lead["id"], lead["email"], comp["subject"], comp["body"], status="QUEUED")
+        if mid:
+            store.set_lead_status(lead["id"], "NEW")
+            made.append({**lead, "lead_id": lead["id"], "message_id": mid,
+                         "subject": comp["subject"], "body": comp["body"]})
+    todo = [c for c in sources.find_candidates(states)
+            if not prev.get(c["domain"]) or prev[c["domain"]][1] == "NO_COMPOSE"][:max_eval]
+    evals = []
+    if todo:
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            evals = list(ex.map(lambda c: (c, sources.evaluate_site(c["domain"])), todo))
+    for c, ev in evals:
+        if len(made) >= count:
+            break
+        name = _clean_name(ev["title"] or c.get("name") or "", c["domain"])
+        lead = {**c, "email": ev["email"], "email_source": ev["source_url"], "name": name,
+                "snippet": ev["text"] or c.get("snippet"), "notes": {"icp": ev["icp"]}}
+        existing = prev.get(c["domain"])
+        if not ev["icp"]["ok"]:
+            lid = existing[0] if existing else store.upsert_lead(lead)
+            store.set_lead_status(lid, "NOT_RELEVANT", {"icp": ev["icp"]})
+            rejected += 1
+            continue
+        email = ev["email"]
         if not email:
             no_email += 1
             continue
         if email in supp or store.message_exists(email):
             continue
-        lead = {**c, "email": email, "email_source": src_url,
-                "name": _clean_name(title or c.get("name") or "", c["domain"])}
-        lid = store.upsert_lead(lead)
+        lid = existing[0] if existing else store.upsert_lead(lead)
         comp = compose.compose_email(lead)
         if not comp.get("ok"):
-            store.set_lead_status(lid, "NO_COMPOSE", {"error": comp.get("error")})
+            store.set_lead_status(lid, "NO_COMPOSE", {"error": comp.get("error"), "icp": ev["icp"]})
             continue
         mid = store.log_message(lid, email, comp["subject"], comp["body"], status="QUEUED")
         if mid:
-            made.append({**lead, "lead_id": lid, "message_id": mid,
+            made.append({**lead, "lead_id": lid, "message_id": mid, "icp": ev["icp"],
                          "subject": comp["subject"], "body": comp["body"]})
-    return {"ok": True, "generated": len(made), "items": made, "no_email": no_email}
+    return {"ok": True, "generated": len(made), "items": made, "no_email": no_email, "rejected": rejected}
 
 
 def build_followups(count=None, days=None):
@@ -106,6 +138,9 @@ def format_preview(items, header=""):
         tag = " ↪ follow-up" if it.get("followup") else ""
         lines.append(f"━━ {i}. {it.get('name', '')[:60]}{tag} ━━")
         lines.append(f"To: {it.get('email') or it.get('to_email', '')}")
+        icp = it.get("icp") or {}
+        if icp.get("strong"):
+            lines.append(f"✓ NDIS-relevant ({', '.join(icp['strong'][:5])})")
         lines.append(f"Subject: {it.get('subject', '')}")
         lines.append((it.get("body") or "")[:1200])
     out = "\n".join(lines)
@@ -123,6 +158,6 @@ def format_sent(items, sent, dry):
 def status_text():
     s = store.stats()
     return ("📊 Outreach stats\n"
-            f"Leads: {s['leads']} (email mila: {s['with_email']})\n"
+            f"Leads: {s['relevant']} relevant (email mila: {s['with_email']}) | skip: {s['not_relevant']}\n"
             f"Queued: {s['queued']} | Sent: {s['sent']} | Failed: {s['failed']}\n"
             f"Replies: {s['replied']} | Unsub: {s['unsub']} | Suppressed: {s['suppressed']}")

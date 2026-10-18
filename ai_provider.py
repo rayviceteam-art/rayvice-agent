@@ -119,7 +119,42 @@ class OpenRouterProvider(AIProvider):
                                       "risk": "MEDIUM"})
         return AIResult(False, error=last_err)
 
+class GroqProvider(AIProvider):
+    """Groq free tier (OpenAI-compatible). Fallback jab OpenRouter free quota khatam ho."""
+    name = "groq"
+
+    def __init__(self):
+        self.base = config.GROQ_BASE_URL
+        self.key = config.GROQ_API_KEY
+
+    def chat(self, messages, model=None, timeout=60):
+        if not self.key:
+            return AIResult(False, error="GROQ_API_KEY missing. Add to .env (free at console.groq.com).")
+        m = model or (config.GROQ_MODELS[0] if config.GROQ_MODELS else "llama-3.3-70b-versatile")
+        data = json.dumps({"model": m, "messages": messages}).encode("utf-8")
+        req = urllib.request.Request(
+            self.base + "/chat/completions", data=data,
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {self.key}"},
+            method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                out = json.loads(r.read().decode("utf-8"))
+            text = out["choices"][0]["message"]["content"]
+            _bump_usage(m, out.get("usage", {}).get("total_tokens", 0))
+            return AIResult(True, text=text, model=f"groq/{m}")
+        except urllib.error.HTTPError as e:
+            try:
+                body = e.read().decode("utf-8")[:300]
+            except Exception:
+                body = str(e)
+            return AIResult(False, error=f"groq HTTP {e.code}: {body}")
+        except Exception as e:
+            return AIResult(False, error=f"groq error: {e}")
+
+
 def get_provider(name="openrouter"):
     if name == "openrouter":
         return OpenRouterProvider()
+    if name == "groq":
+        return GroqProvider()
     raise ValueError(f"Unknown provider {name}. Add new class here, don't hard-code elsewhere.")
