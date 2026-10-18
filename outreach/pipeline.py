@@ -46,7 +46,14 @@ def _clean_name(name, domain):
     return n[:40]
 
 
-def build_daily(count=None, states=None, max_eval=30):
+def _rank_key(ce):
+    """Candidate ko 'best' order me sort karo: ICP-ok, email hai, phir score."""
+    ev = (ce[1] if len(ce) > 1 else {}) or {}
+    icp = ev.get("icp") or {}
+    return (1 if icp.get("ok") else 0, 1 if ev.get("email") else 0, icp.get("score", 0))
+
+
+def build_daily(count=None, states=None, max_eval=40):
     """N naye leads + personalised emails QUEUE karo. Nothing sent here.
 
     Sirf wahi leads jinki site ICP gate pass kare (real NDIS/support provider).
@@ -65,6 +72,7 @@ def build_daily(count=None, states=None, max_eval=30):
         lead = dict(r)
         if not lead.get("email"):
             continue
+        lead["name"] = _clean_name(lead.get("name"), lead["domain"])  # purane generic names saaf karo
         comp = compose.compose_email(lead)
         if not comp.get("ok"):
             continue
@@ -79,6 +87,7 @@ def build_daily(count=None, states=None, max_eval=30):
     if todo:
         with ThreadPoolExecutor(max_workers=6) as ex:
             evals = list(ex.map(lambda c: (c, sources.evaluate_site(c["domain"])), todo))
+        evals.sort(key=_rank_key, reverse=True)  # best qualified leads pehle
     for c, ev in evals:
         if len(made) >= count:
             break

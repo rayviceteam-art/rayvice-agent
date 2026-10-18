@@ -220,7 +220,41 @@ def t_followup_candidates():
     assert not any(r["message_id"] == mid for r in store.followup_candidates(4, limit=50))
 
 
+def t_sent_local_cap():
+    from datetime import timedelta
+    from social import calendar
+    db.ensure_schema()
+    lid = store.upsert_lead({"name": "Cap Co", "domain": "capco.com.au", "email": "cap@capco.com.au"})
+    mid = store.log_message(lid, "cap@capco.com.au", "s", "b", status="QUEUED")
+    store.mark_message(mid, "SENT")
+    today = calendar.today_local()
+    assert store.sent_local(today) >= 1, "aaj bheja count nahi hua"
+    assert store.sent_local(today - timedelta(days=1)) == 0, "kal ka count galat"
+
+
+def t_query_rotation():
+    from datetime import date
+    a = sources._queries_for(["NSW"], day=date(2026, 3, 1))
+    b = sources._queries_for(["NSW"], day=date(2026, 3, 2))
+    assert a and all(isinstance(x, tuple) and len(x) == 2 for x in a)
+    assert {st for _, st in a} == {"NSW"}
+    assert any("NSW" in q or q.split()[2] in sources.CITIES["NSW"] for q, _ in a)
+    assert a != b, "roz queries same hain (naye leads nahi milenge)"
+
+
+def t_rank_best():
+    ce = [("c", {"email": "y@b.au", "icp": {"ok": True, "score": 3}}),
+          ("a", {"email": "x@a.au", "icp": {"ok": True, "score": 9}}),
+          ("b", {"email": "", "icp": {"ok": True, "score": 9}}),
+          ("d", {"email": "z@c.au", "icp": {"ok": False, "score": 1}})]
+    ce.sort(key=pipeline._rank_key, reverse=True)
+    assert [c for c, _ in ce] == ["a", "c", "b", "d"], [c for c, _ in ce]
+
+
 ok("schema", t_schema)
+ok("sent-local-cap", t_sent_local_cap)
+ok("query-rotation", t_query_rotation)
+ok("rank-best", t_rank_best)
 ok("extract-emails", t_extract_emails)
 ok("best-email-business", t_best_email_prefers_business)
 ok("best-email-reject-personal", t_best_email_rejects_personal_other_domain)

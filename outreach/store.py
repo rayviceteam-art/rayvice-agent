@@ -186,6 +186,27 @@ def sent_today(date):
     return row[0] if row else 0
 
 
+def sent_local(date_local):
+    """Sydney local date ke hisaab se us din bheje gaye emails (DST-safe).
+
+    Gh Actions hourly chalta hai; isse daily cap multiple runs me overflow nahi hota.
+    """
+    from social import calendar
+    c = db.connect()
+    rows = c.execute("SELECT sent_at FROM outreach_messages WHERE status='SENT' AND sent_at<>''").fetchall()
+    c.close()
+    tz = calendar.tz()
+    n = 0
+    for r in rows:
+        try:
+            dt = datetime.strptime(r[0], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        except Exception:
+            continue
+        if dt.astimezone(tz).date() == date_local:
+            n += 1
+    return n
+
+
 def stats():
     c = db.connect()
     out = {}

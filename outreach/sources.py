@@ -71,6 +71,42 @@ QUERIES = [
     "independent NDIS support worker team {state} contact email",
 ]
 
+# Roz naye leads ke liye: state-wide queries ke saath rotating city queries (day-of-year se).
+CITIES = {
+    "NSW": ["Sydney", "Newcastle", "Wollongong", "Central Coast", "Parramatta", "Penrith",
+            "Blacktown", "Liverpool", "Illawarra", "Hunter", "Campbelltown", "Coffs Harbour"],
+    "VIC": ["Melbourne", "Geelong", "Dandenong", "Frankston", "Ballarat", "Bendigo",
+            "Werribee", "Craigieburn", "Shepparton", "Werribee", "Preston", "Ringwood"],
+    "QLD": ["Brisbane", "Gold Coast", "Sunshine Coast", "Ipswich", "Logan", "Townsville",
+            "Cairns", "Toowoomba", "Mackay", "Rockhampton", "Bundaberg", "Hervey Bay"],
+    "SA": ["Adelaide", "Elizabeth", "Salisbury", "Mount Gambier", "Whyalla"],
+    "WA": ["Perth", "Fremantle", "Joondalup", "Mandurah", "Bunbury"],
+    "ACT": ["Canberra", "Belconnen", "Tuggeranong", "Gungahlin"],
+    "TAS": ["Hobart", "Launceston", "Devonport", "Burnie"],
+    "NT": ["Darwin", "Palmerston", "Alice Springs"],
+}
+CITY_QUERIES = [
+    "NDIS provider {city} contact us support workers",
+    "disability support services {city} our team contact",
+    "NDIS community access provider {city} contact email",
+]
+
+
+def _queries_for(states, day=None):
+    """Roz ka query set: state-wide + us din ke 2 rotating cities (day-of-year)."""
+    import datetime
+    doy = (day or datetime.date.today()).timetuple().tm_yday
+    out = []
+    for st in states:
+        for t in QUERIES:
+            out.append((t.format(state=st), st))
+        cities = CITIES.get(st) or [st]
+        picks = [cities[doy % len(cities)], cities[(doy * 3 + 1) % len(cities)]]
+        for t in CITY_QUERIES:
+            for c in picks:
+                out.append((t.format(city=c), st))
+    return out
+
 # --- Ideal Customer Profile (ICP) gate ---------------------------------------------------
 # Rayvice ka target: chhota Australian NDIS/disability support provider jiske paas support
 # workers hain. Sirf wahi site pass hogi jisme asli NDIS/support signals hon.
@@ -301,26 +337,30 @@ def discover_from_site(domain):
     return ev["email"], ev["source_url"], ev["title"]
 
 
-def find_candidates(states, per_query=8, max_candidates=60):
-    """Web search -> candidate provider domains (blocklist filtered, deduped)."""
+def find_candidates(states, per_query=6, max_candidates=90, day=None):
+    """Web search -> candidate provider domains (blocklist filtered, deduped).
+
+    Roz rotating city queries use hote hain taaki naye domains milte rahein.
+    """
     seen, out = set(), []
-    for st in states:
-        for q in QUERIES:
-            for r in (research.web_search(q.format(state=st), per_query) or []):
-                if r.get("error"):
-                    continue
-                url = r.get("url", "")
-                d = _domain(url)
-                if not d or d in seen or is_blocked(url):
-                    continue
-                if not _aussie_ok(d):
-                    continue
-                seen.add(d)
-                text = r.get("text", "")
-                name = text.split(":", 1)[0][:120].strip()
-                out.append({"domain": d, "url": url, "name": name, "state": st,
-                            "snippet": text[:280], "source": "websearch", "aussie": _aussie_ok(d)})
-                if len(out) >= max_candidates:
-                    return out
+    for q, state in _queries_for(states, day):
+        for r in (research.web_search(q, per_query) or []):
+            if r.get("error"):
+                continue
+            url = r.get("url", "")
+            d = _domain(url)
+            if not d or d in seen or is_blocked(url):
+                continue
+            if not _aussie_ok(d):
+                continue
+            seen.add(d)
+            text = r.get("text", "")
+            name = text.split(":", 1)[0][:120].strip()
+            out.append({"domain": d, "url": url, "name": name, "state": state,
+                        "snippet": text[:280], "source": "websearch", "aussie": _aussie_ok(d)})
+            if len(out) >= max_candidates:
+                break
+        if len(out) >= max_candidates:
+            break
     out.sort(key=lambda x: (not x["aussie"],))  # .au sites pehle
     return out

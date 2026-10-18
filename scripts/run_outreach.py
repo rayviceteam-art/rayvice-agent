@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config  # noqa: E402
 from social import calendar  # noqa: E402
-from outreach import pipeline  # noqa: E402
+from outreach import pipeline, store  # noqa: E402
 import telegram_bot  # noqa: E402
 
 
@@ -79,9 +79,20 @@ def main():
         print(f"followups sent={res['sent']} failed={res['failed']}")
         return 0
 
-    # daily: pehle follow-ups, phir naye leads — total cap n
-    fup_items = pipeline.build_followups()["items"]
-    new_n = max(0, n - len(fup_items))
+    # daily quota (Sydney date): hourly runs me overflow na ho — aaj ke bheje count karo
+    date_local = calendar.today_local()
+    already = store.sent_local(date_local)
+    remaining = max(0, n - already)
+    if remaining == 0:
+        msg = f"✅ Outreach: aaj ka daily quota pura ({already}/{n}) — aaj kuch nahi bhejna."
+        print(msg)
+        if a.preview:
+            _notify(msg)
+        return 0
+
+    # pehle follow-ups, phir naye leads — total remaining cap
+    fup_items = pipeline.build_followups(count=min(remaining, config.OUTREACH_FOLLOWUP_CAP))["items"]
+    new_n = max(0, remaining - len(fup_items))
     built = pipeline.build_daily(count=new_n) if new_n else {"generated": 0, "items": [], "no_email": 0}
     items = fup_items + built["items"]
     if not items:
@@ -92,14 +103,19 @@ def main():
         return 0
 
     if a.preview or a.dry or config.OUTREACH_DRYRUN:
-        text = pipeline.format_preview(items)
+        text = pipeline.format_preview(items, header=f"📬 Outreach preview — {len(items)} emails (quota {remaining}/{n})")
         print(text)
         _notify(text)
         return 0
 
-    res = pipeline.send_daily(count=n, dry=False)
+    res = pipeline.send_daily(count=remaining, dry=False)
     _notify(pipeline.format_sent(res["items"], res["sent"], res["dry"]))
-    print(f"sent={res['sent']} failed={res['failed']} queued={res['would_send']}")
+    try:
+        store.log_run("daily-" + date_local.strftime("%Y-%m-%d"), date_local.strftime("%Y-%m-%d"),
+                      built.get("generated", 0), res["sent"], False)
+    except Exception:
+        pass
+    print(f"sent={res['sent']} failed={res['failed']} queued={res['would_send']} already_today={already}")
     sc = pipeline.scan()
     print("scan:", sc)
     return 0
