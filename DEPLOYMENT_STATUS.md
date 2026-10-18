@@ -97,5 +97,7 @@ Updated: 2026-10-18 · Owner: Rayvice · Budget: ₹0 (no card)
 - Modules: `outreach/{sources,compose,mailer,pipeline,store}.py`; runner `scripts/run_outreach.py`; tables `outreach_*` in `data/social.db`; CI step "Outreach daily" in social-tick.yml.
 - Default **DRY-RUN ON** (`OUTREACH_DRYRUN=true`) + `OUTREACH_ENABLED=false` -> CI sirf Telegram pe preview bhejta hai, kuch send nahi.
 - Go-live (owner action): set repo **variables** `OUTREACH_ENABLED=true`, `OUTREACH_DRYRUN=false`, `OUTREACH_FROM_NAME`; set repo **secrets** `OUTREACH_FROM_EMAIL` + `OUTREACH_EMAIL_PASS` (Gmail App Password; 2FA zaroori) — ya domain SMTP details `OUTREACH_SMTP_HOST/PORT` + `OUTREACH_IMAP_HOST`.
-- Telegram commands: `email preview` | `email send` | `email scan` | `email stats` | `email skip <address>`.
+- Telegram commands: `email preview` | `email send` | `email followup` | `email scan` | `email stats` | `email skip <address>`.
 - Reuse note: `growth/` package = purana **manual** DM lead-hunt (approval + owner sends). `outreach/` = naya **auto email** path.
+- **GO-LIVE (2026-10-18):** vars set `OUTREACH_ENABLED=true`, `OUTREACH_DRYRUN=false`, `OUTREACH_FROM_NAME=Sartaj`, `OUTREACH_DAILY_CAP=10`, `OUTREACH_STATES=NSW,VIC,QLD`, `OUTREACH_FOLLOWUP_DAYS=4`, `OUTREACH_FOLLOWUP_CAP=3`; secrets set `OUTREACH_FROM_EMAIL=rayviceofficial@gmail.com`, `OUTREACH_EMAIL_PASS`. SMTP+IMAP login verified, test email sent. Din me max 10 emails, Mon-Fri 9-11am Sydney.
+- **Follow-up (1 step):** jin leads ka reply nahi aaya, unhe ~4 din baad ek polite follow-up (max 10-level cap se andar, default 3/day). Reply/unsub/bounce aane par follow-up band. Schema: `outreach_messages.followup`, `.parent_id` (auto-migrate). Prompt `outreach-v3`.
