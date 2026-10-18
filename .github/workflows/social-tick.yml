@@ -43,6 +43,13 @@ jobs:
       IMAGE_PROVIDER: ${{ vars.IMAGE_PROVIDER || 'card' }}
       SOCIAL_PLATFORMS: ${{ vars.SOCIAL_PLATFORMS || 'facebook,instagram,linkedin,reddit' }}
       SOCIAL_DRYRUN: ${{ vars.SOCIAL_DRYRUN || 'true' }}
+      OUTREACH_ENABLED: ${{ vars.OUTREACH_ENABLED || 'false' }}
+      OUTREACH_DRYRUN: ${{ vars.OUTREACH_DRYRUN || 'true' }}
+      OUTREACH_FROM_NAME: ${{ vars.OUTREACH_FROM_NAME || 'Rayvice' }}
+      OUTREACH_FROM_EMAIL: ${{ secrets.OUTREACH_FROM_EMAIL }}
+      OUTREACH_EMAIL_PASS: ${{ secrets.OUTREACH_EMAIL_PASS }}
+      OUTREACH_DAILY_CAP: ${{ vars.OUTREACH_DAILY_CAP || '10' }}
+      OUTREACH_STATES: ${{ vars.OUTREACH_STATES || 'NSW,VIC,QLD' }}
       SOCIAL_TZ: Australia/Sydney
 
     steps:
@@ -67,6 +74,9 @@ jobs:
 
       - name: Group content kit (Telegram)
         run: python3 scripts/run_group_kit.py --send
+
+      - name: Outreach daily (lead gen + cold email)
+        run: python3 scripts/run_outreach.py --daily
 
       - name: Commit state back (social.db + media)
         run: |

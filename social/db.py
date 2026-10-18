@@ -57,6 +57,22 @@ DDL = [
     """CREATE TABLE IF NOT EXISTS social_group_kit(
       date TEXT PRIMARY KEY, ts TEXT, sent_at TEXT, status TEXT,
       prompt_version TEXT, payload TEXT)""",
+    """CREATE TABLE IF NOT EXISTS outreach_leads(
+      id TEXT PRIMARY KEY, ts TEXT, name TEXT, domain TEXT, email TEXT,
+      email_source TEXT, suburb TEXT, state TEXT, niche TEXT, source TEXT,
+      status TEXT, notes TEXT)""",
+    """CREATE TABLE IF NOT EXISTS outreach_messages(
+      id TEXT PRIMARY KEY, ts TEXT, lead_id TEXT, to_email TEXT, subject TEXT,
+      body TEXT, status TEXT, sent_at TEXT, error TEXT,
+      idempotency_key TEXT UNIQUE)""",
+    """CREATE TABLE IF NOT EXISTS outreach_suppression(
+      email TEXT PRIMARY KEY, reason TEXT, ts TEXT)""",
+    """CREATE TABLE IF NOT EXISTS outreach_replies(
+      id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, lead_email TEXT,
+      subject TEXT, snippet TEXT, kind TEXT)""",
+    """CREATE TABLE IF NOT EXISTS outreach_runs(
+      run_id TEXT PRIMARY KEY, date TEXT, ts TEXT, generated INTEGER,
+      sent INTEGER, dry_run INTEGER, detail TEXT)""",
 ]
 
 INDEXES = [
@@ -64,6 +80,8 @@ INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_pub_platform ON social_publications(platform, ts)",
     "CREATE INDEX IF NOT EXISTS idx_drafts_platform ON social_drafts(platform, ts)",
     "CREATE INDEX IF NOT EXISTS idx_errors_ts ON social_errors(ts)",
+    "CREATE INDEX IF NOT EXISTS idx_outreach_leads_status ON outreach_leads(status)",
+    "CREATE INDEX IF NOT EXISTS idx_outreach_msgs_status ON outreach_messages(status, ts)",
 ]
 
 

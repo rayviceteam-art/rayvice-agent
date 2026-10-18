@@ -89,3 +89,13 @@ Updated: 2026-10-18 · Owner: Rayvice · Budget: ₹0 (no card)
 - Dedup: last 30 kits se Jaccard overlap check; LLM fail -> hand-written template kit (kit kabhi khali nahi).
 - Commands: `social kit` (aaj ka bhejo) | `social kit regen` | `social kit resend`. Runner: `scripts/run_group_kit.py --send` (CI tick ke saath chalta hai).
 - Posting (social publish) filhaal **paused**: `AUTOMATION_ENABLED=false` + `SOCIAL_DRYRUN=true` (GH var bhi).
+
+## Email Outreach (daily lead gen + cold email) — 2026-10-18
+
+- Goal: roz subah ~10 chhote NDIS providers ko personalized email, owner ke apne email se. Lead source = public web search (Tavily) -> provider ki apni website ke *published* contact email (`info@`, `hello@`, business inbox). Bade orgs / directories / social blocklist.
+- Compliance (AU Spam Act 2003): accurate sender id + opt-out line ("reply stop"), suppression list, bounces auto-suppress, low volume (10/day), weekday 9-11am Sydney. Sirf B2B published business emails.
+- Modules: `outreach/{sources,compose,mailer,pipeline,store}.py`; runner `scripts/run_outreach.py`; tables `outreach_*` in `data/social.db`; CI step "Outreach daily" in social-tick.yml.
+- Default **DRY-RUN ON** (`OUTREACH_DRYRUN=true`) + `OUTREACH_ENABLED=false` -> CI sirf Telegram pe preview bhejta hai, kuch send nahi.
+- Go-live (owner action): set repo **variables** `OUTREACH_ENABLED=true`, `OUTREACH_DRYRUN=false`, `OUTREACH_FROM_NAME`; set repo **secrets** `OUTREACH_FROM_EMAIL` + `OUTREACH_EMAIL_PASS` (Gmail App Password; 2FA zaroori) — ya domain SMTP details `OUTREACH_SMTP_HOST/PORT` + `OUTREACH_IMAP_HOST`.
+- Telegram commands: `email preview` | `email send` | `email scan` | `email stats` | `email skip <address>`.
+- Reuse note: `growth/` package = purana **manual** DM lead-hunt (approval + owner sends). `outreach/` = naya **auto email** path.

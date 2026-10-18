@@ -70,6 +70,20 @@ SOCIAL_MAX_ATTEMPTS = int(os.environ.get("SOCIAL_MAX_ATTEMPTS", "5") or 5)
 SOCIAL_RETRY_BASE_SECONDS = int(os.environ.get("SOCIAL_RETRY_BASE_SECONDS", "60") or 60)
 # Telegram: sirf is user ID ke commands chalenge (set karna zaroori hai for production).
 TELEGRAM_ALLOWED_USER_ID = os.environ.get("TELEGRAM_ALLOWED_USER_ID", "")
+# --- Outreach (daily cold-email lead gen; Spam Act aware) ---
+OUTREACH_ENABLED = os.environ.get("OUTREACH_ENABLED", "false").lower() == "true"
+OUTREACH_DRYRUN = os.environ.get("OUTREACH_DRYRUN", "true").lower() == "true"
+OUTREACH_FROM_NAME = os.environ.get("OUTREACH_FROM_NAME", "Rayvice")
+OUTREACH_FROM_EMAIL = os.environ.get("OUTREACH_FROM_EMAIL", "")
+OUTREACH_REPLY_TO = os.environ.get("OUTREACH_REPLY_TO", "") or os.environ.get("OUTREACH_FROM_EMAIL", "")
+OUTREACH_SMTP_HOST = os.environ.get("OUTREACH_SMTP_HOST", "smtp.gmail.com")
+OUTREACH_SMTP_PORT = int(os.environ.get("OUTREACH_SMTP_PORT", "465") or 465)
+OUTREACH_IMAP_HOST = os.environ.get("OUTREACH_IMAP_HOST", "imap.gmail.com")
+OUTREACH_IMAP_PORT = int(os.environ.get("OUTREACH_IMAP_PORT", "993") or 993)
+OUTREACH_EMAIL_PASS = os.environ.get("OUTREACH_EMAIL_PASS", "") or os.environ.get("OUTREACH_SMTP_PASS", "")
+OUTREACH_DAILY_CAP = int(os.environ.get("OUTREACH_DAILY_CAP", "10") or 10)
+OUTREACH_STATES = [s.strip().upper() for s in os.environ.get("OUTREACH_STATES", "NSW,VIC,QLD").split(",") if s.strip()]
+OUTREACH_SENDER_ABN = os.environ.get("OUTREACH_SENDER_ABN", "")
 # Meta (Facebook Page + Instagram professional)
 META_GRAPH_VERSION = os.environ.get("META_GRAPH_VERSION", "v23.0")
 META_APP_ID = os.environ.get("META_APP_ID", "")
@@ -100,7 +114,8 @@ HINGLISH_STYLE = ("Reply in Roman Hinglish (Hindi written in English letters, li
 SECRET_KEYS = {"OPENROUTER_API_KEY", "TELEGRAM_BOT_TOKEN", "GITHUB_TOKEN", "TAVILY_API_KEY",
                "META_APP_SECRET", "META_ACCESS_TOKEN", "X_CLIENT_SECRET", "X_ACCESS_TOKEN",
                "REDDIT_CLIENT_SECRET", "REDDIT_REFRESH_TOKEN", "LINKEDIN_CLIENT_SECRET",
-               "LINKEDIN_ACCESS_TOKEN", "IMAGE_API_KEY"}
+               "LINKEDIN_ACCESS_TOKEN", "IMAGE_API_KEY",
+               "OUTREACH_EMAIL_PASS", "OUTREACH_SMTP_PASS"}
 
 def has_secrets():
     return bool(OPENROUTER_API_KEY and TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID)

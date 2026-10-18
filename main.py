@@ -196,6 +196,39 @@ def handle_owner_text(text):
         from growth import outreach as _out
         aid, msg = _out.queue_outreach(lid)
         return (msg + "\n\nYaad rahe bhai: msg tu khud bhejega, agent nahi bhejega.")[:3900]
+    if t.startswith("email"):
+        from outreach import pipeline as _op
+        from outreach import store as _os
+        sub = text.split(None, 1)[1].strip() if len(text.split(None, 1)) > 1 else ""
+        low = sub.lower()
+        if low.startswith("preview") or not low:
+            built = _op.build_daily()
+            if not built.get("generated"):
+                return f"📪 Aaj koi naya lead+email nahi bana (website pe email nahi mila: {built.get('no_email')})."
+            return _op.format_preview(built["items"])
+        if low.startswith("send"):
+            if config.OUTREACH_DRYRUN:
+                res = _op.send_daily(dry=True)
+                head = "📤 Ye emails jayenge (dry-run ON, kuch bheja nahi):"
+                return _op.format_preview(res["items"], header=head)[:3900]
+            res = _op.send_daily(dry=False)
+            return (_op.format_sent(res["items"], res["sent"], res["dry"]) +
+                    f"\nfailed={res['failed']}")[:3900]
+        if low.startswith("scan"):
+            return f"Inbox scan: {_op.scan()}"
+        if low.startswith("stats"):
+            return _op.status_text()
+        if low.startswith("skip"):
+            addr = sub.split(None, 1)[1].strip() if len(sub.split(None, 1)) > 1 else ""
+            if not addr:
+                return "Bolo: email skip <address>"
+            _os.add_suppression(addr, "manual skip")
+            return f"Suppress kar diya: {addr} — ab ise kabhi email nahi jayega."
+        return ("📧 Email outreach commands:\n"
+                "• email preview — naye leads + emails banao aur dikhao\n"
+                "• email send — queued emails bhejo (dry-run off hone par asli)\n"
+                "• email scan — replies / unsubscribe / bounces check\n"
+                "• email stats | email skip <address>")[:3900]
     if "schedule" in t or "timetable" in t or "time" in t:
         return f"⏰ Time-table bhai ({config.TIMEZONE}, business {config.BUSINESS_TZ}):\n" + scheduler.timetable()
     if t.startswith("pause") or "rayvice pause" in t:
@@ -300,6 +333,7 @@ def handle_owner_text(text):
                 "• check site | deploy | bugs | analytics | feedback\n"
                 "• schedule | pause | resume | mode <name>\n"
                 "• social status | social drafts | social run | social week | social errors | social retry | social verify | social kit\n"
+                "• email preview | email send | email scan | email stats | email skip <address>\n"
                 "• APPROVE <id> | REJECT <id>\n"
                 "Seedha bol bhi sakta hai: `aaj kya karu` ya `aaj ka operation chala`.\n"
                 "Kuch samajh na aaye to aise hi likh ke bhej de, mai samajh lunga.")
