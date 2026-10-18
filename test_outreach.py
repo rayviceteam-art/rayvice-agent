@@ -113,6 +113,46 @@ def t_format_preview():
     assert "t@test.com.au" in text and "Hi" in text
 
 
+def t_followup_columns():
+    db.ensure_schema()
+    c = db.connect()
+    cols = {r["name"] for r in c.execute("PRAGMA table_info(outreach_messages)")}
+    c.close()
+    assert {"followup", "parent_id"} <= cols, cols
+
+
+def t_followup_idempotent():
+    lid = store.upsert_lead({"name": "G", "domain": "g.com.au", "email": "c@g.com.au"})
+    m1 = store.log_message(lid, "c@g.com.au", "subj", "body")
+    assert m1
+    f1 = store.log_message(lid, "c@g.com.au", "re: subj", "body2", followup=1, parent_id=m1)
+    assert f1, "followup insert should succeed"
+    assert store.followup_exists("c@g.com.au")
+    f2 = store.log_message(lid, "c@g.com.au", "re: subj", "body3", followup=1, parent_id=m1)
+    assert not f2, "second followup must be blocked"
+
+
+def t_followup_validate():
+    good = ('Hi there, just following up on my note about invoicing for your shifts. '
+            'No worries at all if it is not a fit. Rayvice has a free 9-day trial at rayvice.com. '
+            'Kind regards, Sartaj. If not relevant just reply "stop".')
+    assert compose.validate_followup("Re: invoicing", good) == []
+    assert compose.validate_followup("Re: x", "too short")
+
+
+def t_followup_candidates():
+    lid = store.upsert_lead({"name": "F Co", "domain": "f.com.au", "email": "b@f.com.au"})
+    mid = store.log_message(lid, "b@f.com.au", "Subj", "Body")
+    c = db.connect()
+    c.execute("UPDATE outreach_messages SET status='SENT', sent_at='2020-01-01T00:00:00Z' WHERE id=?", (mid,))
+    c.execute("UPDATE outreach_leads SET status='SENT' WHERE id=?", (lid,))
+    c.commit()
+    c.close()
+    assert any(r["message_id"] == mid for r in store.followup_candidates(4, limit=50))
+    store.set_lead_status(lid, "REPLIED")
+    assert not any(r["message_id"] == mid for r in store.followup_candidates(4, limit=50))
+
+
 ok("schema", t_schema)
 ok("extract-emails", t_extract_emails)
 ok("best-email-business", t_best_email_prefers_business)
@@ -124,6 +164,10 @@ ok("suppression", t_suppression)
 ok("message-idempotent", t_message_idempotent)
 ok("send-dryrun", t_send_dryrun_no_network)
 ok("format-preview", t_format_preview)
+ok("followup-columns", t_followup_columns)
+ok("followup-idempotent", t_followup_idempotent)
+ok("followup-validate", t_followup_validate)
+ok("followup-candidates", t_followup_candidates)
 
 for f in ("data/test_outreach.db", "data/test_outreach.db-wal", "data/test_outreach.db-shm"):
     try:

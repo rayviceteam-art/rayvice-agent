@@ -6,7 +6,7 @@ import re
 import config
 import model_router
 
-PROMPT_VERSION = "outreach-v2"
+PROMPT_VERSION = "outreach-v3"
 
 BANNED = ("guarantee", "100%", "risk-free", "risk free", "act now", "limited time",
           "final notice", "urgent", "no risk", "free money", "double your", "make $$$",
@@ -83,6 +83,69 @@ def build_messages(lead):
             f"Website: {lead.get('domain', '')}. "
             f"Context from their site: {(lead.get('snippet') or '')[:200]}")
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def build_followup_messages(lead, orig_subject, orig_body):
+    sender = config.OUTREACH_FROM_NAME or "Rayvice"
+    system = (
+        "You are writing a SHORT, polite one-to-one follow-up email as a real person at an Australian small "
+        f"business (signing as '{sender}' from Rayvice). This is the SECOND and final email to this business — "
+        "a genuine nudge on an earlier note, not a new pitch and not an ad. "
+        "Rules: Australian English, plain text only, no markdown/HTML/emojis. 25-55 words. Warm and low-pressure. "
+        "Acknowledge you already emailed once, briefly restate the single idea in one line, and make it easy to say "
+        "no. Do NOT repeat the whole pitch, do NOT add new features, no urgency, no guilt-tripping, no 'just "
+        "bumping this', no 'circling back', no fake Re: thread tricks beyond a simple reply. "
+        "Never invent anything or claim prior contact beyond your own earlier email. "
+        'Reply with ONLY JSON: {"subject":"...","body":"..."}. '
+        "Follows this exact signature, then the opt-out line on its own line:\n"
+        f"Kind regards,\n{sender}\nrayvice.com\n"
+        "If this isn't relevant, just reply \"stop\" and I won't email again."
+    )
+    user = (f"Recipient business: {lead.get('name') or 'this provider'}. "
+            f"Located in {lead.get('suburb') or lead.get('state') or 'Australia'}. "
+            f"My earlier email subject was: {orig_subject or '(none)'}. "
+            f"Its short summary: {(orig_body or '')[:280]}")
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def validate_followup(subject, body):
+    errs = []
+    low = (body or "").lower()
+    if len((body or "").split()) < 20:
+        errs.append("body too short")
+    if len(body or "") > 900:
+        errs.append("body too long")
+    if "rayvice" not in low:
+        errs.append("no product mention")
+    if "stop" not in low and "unsubscribe" not in low:
+        errs.append("no opt-out line")
+    if "<html" in low or "<p>" in low or "<div" in low:
+        errs.append("html not allowed")
+    for bad in BANNED:
+        if bad in low:
+            errs.append(f"banned phrase: {bad}")
+    if not subject:
+        errs.append("subject missing")
+    return errs
+
+
+def compose_followup(lead, orig_subject, orig_body):
+    res = model_router.run_task("outreach", build_followup_messages(lead, orig_subject, orig_body))
+    data = _extract_json(getattr(res, "text", "")) if getattr(res, "ok", False) else None
+    if data is None:
+        msgs = build_followup_messages(lead, orig_subject, orig_body) + [
+            {"role": "assistant", "content": (getattr(res, "text", "") or "")[:400]},
+            {"role": "user", "content": "That was not valid JSON. Reply again with ONLY the JSON object."}]
+        res2 = model_router.run_task("outreach", msgs)
+        data = _extract_json(getattr(res2, "text", "")) if getattr(res2, "ok", False) else None
+    if data is None:
+        return {"ok": False, "error": "AI unavailable/junk output"}
+    subject = str(data.get("subject") or "").strip()
+    body = str(data.get("body") or "").strip()
+    errs = validate_followup(subject, body)
+    if errs:
+        return {"ok": False, "error": "validation: " + "; ".join(errs[:4]), "errors": errs}
+    return {"ok": True, "subject": subject, "body": body, "model": getattr(res, "model", "")}
 
 
 def _extract_json(text):

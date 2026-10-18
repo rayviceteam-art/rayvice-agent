@@ -83,6 +83,8 @@ OUTREACH_IMAP_PORT = int(os.environ.get("OUTREACH_IMAP_PORT", "993") or 993)
 OUTREACH_EMAIL_PASS = os.environ.get("OUTREACH_EMAIL_PASS", "") or os.environ.get("OUTREACH_SMTP_PASS", "")
 OUTREACH_DAILY_CAP = int(os.environ.get("OUTREACH_DAILY_CAP", "10") or 10)
 OUTREACH_STATES = [s.strip().upper() for s in os.environ.get("OUTREACH_STATES", "NSW,VIC,QLD").split(",") if s.strip()]
+OUTREACH_FOLLOWUP_DAYS = int(os.environ.get("OUTREACH_FOLLOWUP_DAYS", "4") or 4)
+OUTREACH_FOLLOWUP_CAP = int(os.environ.get("OUTREACH_FOLLOWUP_CAP", "3") or 3)
 OUTREACH_SENDER_ABN = os.environ.get("OUTREACH_SENDER_ABN", "")
 # Meta (Facebook Page + Instagram professional)
 META_GRAPH_VERSION = os.environ.get("META_GRAPH_VERSION", "v23.0")

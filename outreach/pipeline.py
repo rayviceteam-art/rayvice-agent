@@ -56,6 +56,25 @@ def build_daily(count=None, states=None):
     return {"ok": True, "generated": len(made), "items": made, "no_email": no_email}
 
 
+def build_followups(count=None, days=None):
+    """Purane bheje emails (jinka reply nahi aaya) ke liye ek polite follow-up QUEUE karo."""
+    count = count or config.OUTREACH_FOLLOWUP_CAP
+    days = days if days is not None else config.OUTREACH_FOLLOWUP_DAYS
+    db.ensure_schema()
+    made = []
+    for r in store.followup_candidates(days, limit=count):
+        lead = dict(r)
+        comp = compose.compose_followup(lead, lead.get("orig_subject"), lead.get("orig_body"))
+        if not comp.get("ok"):
+            continue
+        mid = store.log_message(lead["lead_id"], lead["to_email"], comp["subject"], comp["body"],
+                                status="QUEUED", followup=1, parent_id=lead["message_id"])
+        if mid:
+            made.append({**lead, "email": lead["to_email"], "message_id": mid,
+                         "subject": comp["subject"], "body": comp["body"], "followup": 1})
+    return {"ok": True, "generated": len(made), "items": made}
+
+
 def send_daily(count=None, dry=None):
     """QUEUED messages bhejo (dry=True -> sirf list, kuch nahi jaata)."""
     count = count or config.OUTREACH_DAILY_CAP
@@ -84,7 +103,8 @@ def format_preview(items, header=""):
     lines = [header or f"📬 Outreach preview — {len(items)} emails (kuch bheja nahi gaya)"]
     for i, it in enumerate(items, 1):
         lines.append("")
-        lines.append(f"━━ {i}. {it.get('name', '')[:60]} ━━")
+        tag = " ↪ follow-up" if it.get("followup") else ""
+        lines.append(f"━━ {i}. {it.get('name', '')[:60]}{tag} ━━")
         lines.append(f"To: {it.get('email') or it.get('to_email', '')}")
         lines.append(f"Subject: {it.get('subject', '')}")
         lines.append((it.get("body") or "")[:1200])

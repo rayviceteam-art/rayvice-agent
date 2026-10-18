@@ -214,6 +214,12 @@ def handle_owner_text(text):
             res = _op.send_daily(dry=False)
             return (_op.format_sent(res["items"], res["sent"], res["dry"]) +
                     f"\nfailed={res['failed']}")[:3900]
+        if low.startswith("followup") or low.startswith("follow-up"):
+            fup = _op.build_followups()
+            if not fup.get("generated"):
+                return (f"📪 Follow-up ke liye koi eligible email nahi "
+                        f"(>= {config.OUTREACH_FOLLOWUP_DAYS} din purana + reply nahi aaya).")
+            return _op.format_preview(fup["items"], header=f"📬 Follow-ups banaye: {len(fup['items'])}")[:3900]
         if low.startswith("scan"):
             return f"Inbox scan: {_op.scan()}"
         if low.startswith("stats"):
@@ -227,6 +233,7 @@ def handle_owner_text(text):
         return ("📧 Email outreach commands:\n"
                 "• email preview — naye leads + emails banao aur dikhao\n"
                 "• email send — queued emails bhejo (dry-run off hone par asli)\n"
+                "• email followup — purane bheje (bina reply) ka follow-up banao\n"
                 "• email scan — replies / unsubscribe / bounces check\n"
                 "• email stats | email skip <address>")[:3900]
     if "schedule" in t or "timetable" in t or "time" in t:
@@ -333,7 +340,7 @@ def handle_owner_text(text):
                 "• check site | deploy | bugs | analytics | feedback\n"
                 "• schedule | pause | resume | mode <name>\n"
                 "• social status | social drafts | social run | social week | social errors | social retry | social verify | social kit\n"
-                "• email preview | email send | email scan | email stats | email skip <address>\n"
+                "• email preview | email send | email followup | email scan | email stats | email skip <address>\n"
                 "• APPROVE <id> | REJECT <id>\n"
                 "Seedha bol bhi sakta hai: `aaj kya karu` ya `aaj ka operation chala`.\n"
                 "Kuch samajh na aaye to aise hi likh ke bhej de, mai samajh lunga.")

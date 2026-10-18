@@ -77,19 +77,49 @@ def set_lead_status(lead_id, status, notes=None):
     c.close()
 
 
-def log_message(lead_id, to_email, subject, body, status="QUEUED", error=""):
+def log_message(lead_id, to_email, subject, body, status="QUEUED", error="", followup=0, parent_id=""):
     mid = new_id("om_")
-    key = f"outreach:{(to_email or '').lower()}"
+    email = (to_email or "").lower()
+    key = f"outreach:{email}:f1" if followup else f"outreach:{email}"
     c = db.connect()
     try:
-        c.execute("INSERT INTO outreach_messages VALUES(?,?,?,?,?,?,?,?,?,?)",
-                  (mid, utcnow(), lead_id, (to_email or "").lower(), subject, body, status, "", error[:500], key))
+        c.execute(
+            "INSERT INTO outreach_messages"
+            "(id,ts,lead_id,to_email,subject,body,status,sent_at,error,idempotency_key,followup,parent_id) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+            (mid, utcnow(), lead_id, email, subject, body, status, "", error[:500], key, 1 if followup else 0, parent_id))
         c.commit()
     except Exception:
         c.close()
         return ""
     c.close()
     return mid
+
+
+def followup_exists(email):
+    c = db.connect()
+    row = c.execute("SELECT id FROM outreach_messages WHERE idempotency_key=?",
+                    (f"outreach:{(email or '').lower()}:f1",)).fetchone()
+    c.close()
+    return bool(row)
+
+
+def followup_candidates(days, limit=10):
+    """SENT emails, koi reply/unsub/bounce nahi, follow-up window aa gaya, aur abhi tak follow-up nahi."""
+    from datetime import timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    c = db.connect()
+    rows = c.execute(
+        "SELECT m.id AS message_id, m.to_email, m.subject AS orig_subject, m.body AS orig_body, m.sent_at, "
+        "l.id AS lead_id, l.name, l.domain, l.suburb, l.state, l.notes "
+        "FROM outreach_messages m JOIN outreach_leads l ON l.id=m.lead_id "
+        "WHERE m.status='SENT' AND m.followup=0 AND m.sent_at<>'' AND m.sent_at<=? "
+        "AND l.status='SENT' "
+        "AND NOT EXISTS (SELECT 1 FROM outreach_messages f WHERE f.idempotency_key='outreach:'||m.to_email||':f1') "
+        "AND NOT EXISTS (SELECT 1 FROM outreach_suppression s WHERE lower(s.email)=m.to_email) "
+        "ORDER BY m.sent_at LIMIT ?", (cutoff, limit)).fetchall()
+    c.close()
+    return rows
 
 
 def mark_message(mid, status, error=""):

@@ -31,6 +31,7 @@ def main():
     ap.add_argument("--scan", action="store_true", help="inbox scan: replies/unsub/bounce")
     ap.add_argument("--stats", action="store_true", help="outreach stats Telegram pe")
     ap.add_argument("--count", type=int, default=0)
+    ap.add_argument("--followups", action="store_true", help="purane bheje emails ka follow-up banao/bhejo")
     ap.add_argument("--dry", action="store_true", help="kuch bhejo mat (preview only)")
     ap.add_argument("--force", action="store_true", help="window/enabled gate ignore")
     a = ap.parse_args()
@@ -58,8 +59,32 @@ def main():
             print(f"outreach window nahi (Sydney {now:%H:%M}) — skip")
             return 0
 
-    built = pipeline.build_daily(count=n)
-    if not built.get("generated"):
+    if a.followups:
+        fup = pipeline.build_followups(count=n)
+        items = fup["items"]
+        if not items:
+            msg = (f"📪 Outreach: follow-up ke liye koi eligible email nahi "
+                   f"(>= {config.OUTREACH_FOLLOWUP_DAYS} din purana + reply nahi).")
+            print(msg)
+            if a.preview or a.dry:
+                _notify(msg)
+            return 0
+        if a.preview or a.dry or config.OUTREACH_DRYRUN:
+            text = pipeline.format_preview(items, header=f"📬 Outreach follow-ups — {len(items)} emails (kuch bheja nahi gaya)")
+            print(text)
+            _notify(text)
+            return 0
+        res = pipeline.send_daily(count=n, dry=False)
+        _notify(pipeline.format_sent(res["items"], res["sent"], res["dry"]))
+        print(f"followups sent={res['sent']} failed={res['failed']}")
+        return 0
+
+    # daily: pehle follow-ups, phir naye leads — total cap n
+    fup_items = pipeline.build_followups()["items"]
+    new_n = max(0, n - len(fup_items))
+    built = pipeline.build_daily(count=new_n) if new_n else {"generated": 0, "items": [], "no_email": 0}
+    items = fup_items + built["items"]
+    if not items:
         msg = f"📪 Outreach: aaj koi naya lead+email nahi bana (no_email={built.get('no_email')})."
         print(msg)
         if a.preview:
@@ -67,7 +92,7 @@ def main():
         return 0
 
     if a.preview or a.dry or config.OUTREACH_DRYRUN:
-        text = pipeline.format_preview(built["items"])
+        text = pipeline.format_preview(items)
         print(text)
         _notify(text)
         return 0

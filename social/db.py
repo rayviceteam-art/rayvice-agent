@@ -64,7 +64,7 @@ DDL = [
     """CREATE TABLE IF NOT EXISTS outreach_messages(
       id TEXT PRIMARY KEY, ts TEXT, lead_id TEXT, to_email TEXT, subject TEXT,
       body TEXT, status TEXT, sent_at TEXT, error TEXT,
-      idempotency_key TEXT UNIQUE)""",
+      idempotency_key TEXT UNIQUE, followup INTEGER DEFAULT 0, parent_id TEXT DEFAULT '')""",
     """CREATE TABLE IF NOT EXISTS outreach_suppression(
       email TEXT PRIMARY KEY, reason TEXT, ts TEXT)""",
     """CREATE TABLE IF NOT EXISTS outreach_replies(
@@ -99,10 +99,19 @@ def utcnow():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _migrate(c):
+    cols = {r["name"] for r in c.execute("PRAGMA table_info(outreach_messages)")}
+    if "followup" not in cols:
+        c.execute("ALTER TABLE outreach_messages ADD COLUMN followup INTEGER DEFAULT 0")
+    if "parent_id" not in cols:
+        c.execute("ALTER TABLE outreach_messages ADD COLUMN parent_id TEXT DEFAULT ''")
+
+
 def ensure_schema():
     c = connect()
     for stmt in DDL + INDEXES:
         c.execute(stmt)
+    _migrate(c)
     row = c.execute("SELECT version FROM schema_version WHERE component='social'").fetchone()
     if not row:
         c.execute("INSERT INTO schema_version VALUES('social',?,?)", (SCHEMA_VERSION, utcnow()))
