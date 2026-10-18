@@ -38,26 +38,23 @@ def select_model(route):
 def run_task(task_type, messages, timeout=60):
     route = classify_task(task_type)
     model = ROUTES.get(route) or select_model(route)
+    # 1) GROQ FIRST — fast, free, multi-key rotator (user preference).
+    try:
+        gp = get_provider("groq")
+        if gp.keys:
+            r = gp.chat(messages, timeout=timeout)
+            if r.ok:
+                return r
+    except Exception:
+        pass
+    # 2) OpenRouter free list fallback.
     provider = get_provider("openrouter")
-    # If route has explicit model list in future, expand here without touching callers.
     res = provider.chat(messages, model=model, timeout=timeout)
-    if not res.ok and not res.needs_approval:
-        # try any other free model once (same provider)
+    if not res.ok:
         for m in config.FREE_MODELS:
             if m == model:
                 continue
             r2 = provider.chat(messages, model=m, timeout=timeout)
             if r2.ok:
                 return r2
-    if not res.ok:
-        # Different provider fallback: Groq free tier (quota/policy alag hoti hai).
-        try:
-            gp = get_provider("groq")
-            if gp.key:
-                for gm in (config.GROQ_MODELS or [None]):
-                    r3 = gp.chat(messages, model=gm, timeout=timeout)
-                    if r3.ok:
-                        return r3
-        except Exception:
-            pass
     return res

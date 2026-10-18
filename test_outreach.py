@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.environ["SOCIAL_DB_PATH"] = "data/test_outreach.db"
 os.environ.setdefault("AGENT_DB_PATH", "data/test_agent.db")
 os.environ["OUTREACH_DRYRUN"] = "true"
+os.environ["GROQ_API_KEYS"] = "k1,k2,k3"
 for f in ("data/test_outreach.db", "data/test_outreach.db-wal", "data/test_outreach.db-shm"):
     try:
         os.remove(f)
@@ -176,6 +177,7 @@ def t_provider_groq_registered():
     from ai_provider import get_provider
     p = get_provider("groq")
     assert p.name == "groq"
+    assert p.keys == ["k1", "k2", "k3"], p.keys
 
 
 def t_followup_columns():

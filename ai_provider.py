@@ -120,36 +120,71 @@ class OpenRouterProvider(AIProvider):
         return AIResult(False, error=last_err)
 
 class GroqProvider(AIProvider):
-    """Groq free tier (OpenAI-compatible). Fallback jab OpenRouter free quota khatam ho."""
+    """Groq free tier (OpenAI-compatible), PRIMARY provider.
+
+    - Multi-key rotator: har call agli key se start, 429/401 pe next key.
+    - Browser User-Agent (Groq Cloudflare urllib UA ko 403/1010 karta hai).
+    - Model fallback: GROQ_MODELS list kram se.
+    """
     name = "groq"
 
     def __init__(self):
         self.base = config.GROQ_BASE_URL
-        self.key = config.GROQ_API_KEY
+        self.keys = list(config.GROQ_API_KEYS)
+
+    def _next_idx(self, n):
+        if n <= 1:
+            return 0
+        u = _load_usage()
+        i = int(u.get("_groq_idx", 0)) % n
+        u["_groq_idx"] = (i + 1) % n
+        _save_usage(u)
+        return i
+
+    def _post(self, model, messages, key, timeout):
+        payload = json.dumps({"model": model, "messages": messages}).encode("utf-8")
+        req = urllib.request.Request(
+            self.base + "/chat/completions", data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {key}",
+                "User-Agent": "Mozilla/5.0 (compatible; RayviceAgent/1.0)",
+            },
+            method="POST")
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read().decode("utf-8"))
 
     def chat(self, messages, model=None, timeout=60):
-        if not self.key:
-            return AIResult(False, error="GROQ_API_KEY missing. Add to .env (free at console.groq.com).")
-        m = model or (config.GROQ_MODELS[0] if config.GROQ_MODELS else "llama-3.3-70b-versatile")
-        data = json.dumps({"model": m, "messages": messages}).encode("utf-8")
-        req = urllib.request.Request(
-            self.base + "/chat/completions", data=data,
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {self.key}"},
-            method="POST")
-        try:
-            with urllib.request.urlopen(req, timeout=timeout) as r:
-                out = json.loads(r.read().decode("utf-8"))
-            text = out["choices"][0]["message"]["content"]
-            _bump_usage(m, out.get("usage", {}).get("total_tokens", 0))
-            return AIResult(True, text=text, model=f"groq/{m}")
-        except urllib.error.HTTPError as e:
-            try:
-                body = e.read().decode("utf-8")[:300]
-            except Exception:
-                body = str(e)
-            return AIResult(False, error=f"groq HTTP {e.code}: {body}")
-        except Exception as e:
-            return AIResult(False, error=f"groq error: {e}")
+        if not self.keys:
+            return AIResult(False, error="GROQ_API_KEYS missing. Add to .env (free at console.groq.com).")
+        models = [model] if model else (config.GROQ_MODELS or ["openai/gpt-oss-120b"])
+        start = self._next_idx(len(self.keys))
+        last_err = ""
+        for m in models:
+            for off in range(len(self.keys)):
+                idx = (start + off) % len(self.keys)
+                key = self.keys[idx]
+                try:
+                    out = self._post(m, messages, key, timeout)
+                    text = out["choices"][0]["message"]["content"] or ""
+                    if not text.strip():
+                        last_err = f"groq {m} key#{idx + 1}: empty content"
+                        continue
+                    _bump_usage(m, out.get("usage", {}).get("total_tokens", 0))
+                    return AIResult(True, text=text, model=f"groq/{m}")
+                except urllib.error.HTTPError as e:
+                    try:
+                        body = e.read().decode("utf-8")[:200]
+                    except Exception:
+                        body = str(e)
+                    last_err = f"groq {m} key#{idx + 1} HTTP {e.code}: {body}"
+                    if e.code in (401, 403, 408, 429, 500, 502, 503, 529):
+                        continue  # agli key / warna agla model
+                    break  # 400 kinds -> is model pe mat atko
+                except Exception as e:
+                    last_err = f"groq {m} key#{idx + 1} error: {e}"
+                    continue
+        return AIResult(False, error=last_err)
 
 
 def get_provider(name="openrouter"):

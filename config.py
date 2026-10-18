@@ -23,11 +23,13 @@ AI_MODE = os.environ.get("AI_MODE", "free").lower()
 ALLOW_PAID_AI = os.environ.get("ALLOW_PAID_AI", "false").lower() == "true"
 FREE_MODELS = [m.strip() for m in os.environ.get("FREE_MODELS", "openrouter/free").split(",") if m.strip()]
 FREE_DAILY_LIMIT = int(os.environ.get("FREE_DAILY_LIMIT", "180") or 180)
-# Groq free tier fallback (jab OpenRouter free quota khatam ho jaye).
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+# Groq free tier (primary AI). Multiple keys -> rotator (429 pe agli key).
+_grk = os.environ.get("GROQ_API_KEYS", "") or os.environ.get("GROQ_API_KEY", "")
+GROQ_API_KEYS = [k.strip() for k in _grk.split(",") if k.strip()]
+GROQ_API_KEY = GROQ_API_KEYS[0] if GROQ_API_KEYS else ""
 GROQ_BASE_URL = os.environ.get("GROQ_BASE_URL", "https://api.groq.com/openai/v1").rstrip("/")
 GROQ_MODELS = [m.strip() for m in os.environ.get(
-    "GROQ_MODELS", "llama-3.3-70b-versatile").split(",") if m.strip()]
+    "GROQ_MODELS", "openai/gpt-oss-120b,qwen/qwen3.8-27b,openai/gpt-oss-20b").split(",") if m.strip()]
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 AGENT_DB_PATH = os.environ.get("AGENT_DB_PATH", "data/agent.db")
@@ -122,7 +124,7 @@ SECRET_KEYS = {"OPENROUTER_API_KEY", "TELEGRAM_BOT_TOKEN", "GITHUB_TOKEN", "TAVI
                "META_APP_SECRET", "META_ACCESS_TOKEN", "X_CLIENT_SECRET", "X_ACCESS_TOKEN",
                "REDDIT_CLIENT_SECRET", "REDDIT_REFRESH_TOKEN", "LINKEDIN_CLIENT_SECRET",
                "LINKEDIN_ACCESS_TOKEN", "IMAGE_API_KEY",
-               "OUTREACH_EMAIL_PASS", "OUTREACH_SMTP_PASS", "GROQ_API_KEY"}
+               "OUTREACH_EMAIL_PASS", "OUTREACH_SMTP_PASS", "GROQ_API_KEY", "GROQ_API_KEYS"}
 
 def has_secrets():
     return bool(OPENROUTER_API_KEY and TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID)
