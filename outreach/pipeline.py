@@ -1,4 +1,6 @@
 """Outreach orchestration: discover -> enrich -> compose -> queue -> send -> scan."""
+import html as _html
+import re
 from concurrent.futures import ThreadPoolExecutor
 
 import config
@@ -9,20 +11,39 @@ _GENERIC_NAME = ("ndis provider", "ndis service", "ndis agency", "ndis registere
                  "registered ndis", "disability service", "disability support",
                  "home", "welcome", "homepage", "home page", "contact us", "contact",
                  "best ndis", "ndis support", "support services", "our services", "services")
+_GENERIC_DESC = ("ndis", "disability", "aged care", "allied health", "support service",
+                 "home care", "community service", "care service", "provider")
+
+
+def _is_generic_name(s):
+    low = (s or "").lower().strip()
+    if not low:
+        return True
+    if any(g in low for g in _GENERIC_DESC):
+        return True
+    if any(g == low or low.startswith(g) for g in _GENERIC_NAME):
+        return True
+    return len(s) > 40 or len(s.split()) > 4 or "," in s or "&" in s
 
 
 def _clean_name(name, domain):
-    n = (name or "").strip()
-    for sep in ("|", ":", "–", "—", " - "):
+    n = _html.unescape(name or "").strip()
+    n = re.sub(r"\s+", " ", n)
+    for sep in ("|", "–", "—", " - ", ":", "·"):
         if sep in n:
             parts = [p.strip() for p in n.split(sep) if p.strip()]
-            nong = [p for p in parts if not any(g in p.lower() for g in _GENERIC_NAME)]
-            n = (nong[0] if nong else parts[-1]).strip()
+            nong = [p for p in parts if not _is_generic_name(p)]
+            n = (min(nong, key=len) if nong else parts[-1]).strip()
             break
-    low = n.lower().strip()
-    if not n or any(g == low or low.startswith(g) for g in _GENERIC_NAME):
+    # "Personalised Aged Care, NDIS & Allied Health Services" -> pehla part agar tail descriptors ho
+    if "," in n:
+        head = n.split(",")[0].strip()
+        tail = n[len(head):].lower()
+        if len(head) >= 3 and any(k in tail for k in ("ndis", "service", "support", "care", "health")):
+            n = head
+    if _is_generic_name(n):
         return domain.split(".")[0].replace("-", " ").title() or "there"
-    return n[:80]
+    return n[:40]
 
 
 def build_daily(count=None, states=None, max_eval=30):
