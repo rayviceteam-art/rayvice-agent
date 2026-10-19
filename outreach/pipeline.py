@@ -53,13 +53,17 @@ def _rank_key(ce):
     return (1 if icp.get("ok") else 0, 1 if ev.get("email") else 0, icp.get("score", 0))
 
 
-def build_daily(count=None, states=None, max_eval=40):
+def build_daily(count=None, states=None, max_eval=None):
     """N naye leads + personalised emails QUEUE karo. Nothing sent here.
 
-    Sirf wahi leads jinki site ICP gate pass kare (real NDIS/support provider).
+    Sirf wahi leads jinki site ICP gate pass kare (real NDIS support worker/provider).
+    max_eval: kitni candidate sites evaluate karni hain — count ke hisaab se auto
+    (30 leads chahiye to ~90 sites evaluate hoti hain).
     """
     count = count or config.OUTREACH_DAILY_CAP
     states = states or config.OUTREACH_STATES
+    if max_eval is None:
+        max_eval = min(120, max(40, count * 3))
     db.ensure_schema()
     prev = store.domain_status()
     supp = store.suppressed_set()

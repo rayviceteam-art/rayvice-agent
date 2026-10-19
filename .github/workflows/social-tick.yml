@@ -50,7 +50,7 @@ jobs:
       OUTREACH_FROM_NAME: ${{ vars.OUTREACH_FROM_NAME || 'Rayvice' }}
       OUTREACH_FROM_EMAIL: ${{ secrets.OUTREACH_FROM_EMAIL }}
       OUTREACH_EMAIL_PASS: ${{ secrets.OUTREACH_EMAIL_PASS }}
-      OUTREACH_DAILY_CAP: ${{ vars.OUTREACH_DAILY_CAP || '10' }}
+      OUTREACH_DAILY_CAP: ${{ vars.OUTREACH_DAILY_CAP || '30' }}
       OUTREACH_STATES: ${{ vars.OUTREACH_STATES || 'NSW,VIC,QLD' }}
       SOCIAL_TZ: Australia/Sydney
 

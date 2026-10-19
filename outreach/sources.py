@@ -63,12 +63,12 @@ FREE_MAIL = ("gmail.com", "hotmail.com", "outlook.com", "bigpond.com", "yahoo.co
 CONTACT_PATHS = ["", "contact", "contact-us", "about", "get-in-touch", "contact.html", "contact-us.html"]
 
 QUERIES = [
-    "NDIS registered provider {state} contact us our team",
-    "NDIS disability support services {state} support workers contact",
-    "small NDIS support provider {state} community access contact",
-    "NDIS support coordination {state} provider contact us",
-    "NDIS plan managed self managed provider {state} contact",
-    "independent NDIS support worker team {state} contact email",
+    "NDIS support worker {state} contact email",
+    "independent NDIS support worker {state} about contact",
+    "small NDIS disability support provider {state} our team contact",
+    "NDIS community access provider {state} support workers contact",
+    "NDIS registered provider {state} in home support contact",
+    "disability support services {state} support workers contact us",
 ]
 
 # Roz naye leads ke liye: state-wide queries ke saath rotating city queries (day-of-year se).
@@ -86,9 +86,9 @@ CITIES = {
     "NT": ["Darwin", "Palmerston", "Alice Springs"],
 }
 CITY_QUERIES = [
-    "NDIS provider {city} contact us support workers",
-    "disability support services {city} our team contact",
-    "NDIS community access provider {city} contact email",
+    "NDIS support worker {city} contact email",
+    "disability support provider {city} contact us",
+    "NDIS support services {city} our team email",
 ]
 
 
@@ -108,25 +108,44 @@ def _queries_for(states, day=None):
     return out
 
 # --- Ideal Customer Profile (ICP) gate ---------------------------------------------------
-# Rayvice ka target: chhota Australian NDIS/disability support provider jiske paas support
-# workers hain. Sirf wahi site pass hogi jisme asli NDIS/support signals hon.
+# Rayvice ka target: NDIS support workers / sole traders + chhote NDIS provider businesses
+# jinke paas support workers hain. Gate STRICT hai:
+#   - "NDIS" context ZAROORI (warna ye business Rayvice ka customer nahi),
+#   - kam se kam 2 support-service signals (ek "ndis" mention kaafi nahi),
+#   - plan managers / registration-consultants / recruitment / directories seedha reject.
+NDIS_CONTEXT_RE = re.compile(r"\bndis\b|national disability insurance", re.I)
 STRONG_SIGNALS = (
-    "ndis", "support worker", "disability support", "disability service",
-    "plan managed", "plan-managed", "self managed", "self-managed",
-    "support coordination", "community access", "community participation",
-    "psychosocial", "supported independent living", "specialist disability accommodation",
-    "core supports", "core support", "capacity building",
+    "support worker", "disability support", "disability service",
+    "community access", "community participation", "support coordination",
+    "supported independent living", "specialist disability accommodation",
+    "core supports", "core support", "capacity building", "respite",
+    "in home support", "in-home support", "individual support",
+    "person centred", "person-centered", "personal care",
+    "assistance with daily life", "daily living",
 )
-STRONG_REGEX = (r"\bndis\b", r"\bsil\b", r"\bsda\b", r"\bparticipants?\b")
+STRONG_REGEX = (r"\bsil\b", r"\bsda\b")
 MEDIUM_SIGNALS = (
-    "disability", "support services", "care workers", "in home support",
-    "respite", "individual support", "person centred", "person-centered",
+    "disability", "participants", "care workers", "allied health",
+    "plan managed", "plan-managed", "self managed", "self-managed",
+    "care team", "care services", "wellbeing", "goals",
+    "quality and safeguards commission",
 )
-# Ye mile to site target provider nahi (directory / job board) -> seedha reject.
+# Ye mile to site target customer nahi -> seedha reject.
+# NOTE: "provider registration NUMBER" footer aur "careers/we are hiring" sections real
+# providers par bhi hote hain — isliye sirf specific junk phrases hi negatives hain.
 HARD_NEGATIVES = (
+    # directories / job boards / recruitment agencies
     "find an ndis provider", "ndis provider directory", "find a provider", "provider directory",
     "compare providers", "browse providers", "top 10 ndis", "best ndis providers",
-    "recruitment agency", "job vacancies", "jobs available", "apply now", "we are hiring", "job board",
+    "recruitment agency", "recruitment services", "labour hire", "staffing agency", "job board",
+    # pure plan managers (invoice RECEIVE karte hain, banate nahi) — provider jo apni
+    # services me plan management offer karta ho woh allowed hai, isliye specific phrases
+    "plan management services", "we are a plan manager", "we are an ndis plan manager",
+    "as your plan manager", "our plan managers", "plan management fees",
+    # registration / consulting / training sellers (khud provider nahi)
+    "provider registration services", "registration services", "become a registered ndis provider",
+    "become an ndis provider", "ndis consultants", "ndis consultant",
+    "ndis business for sale", "franchise opportunities",
 )
 # Ye mile to points kate jayenge par reject nahi (real provider ke footer/blog me aate hain).
 SOFT_NEGATIVES = (
@@ -143,7 +162,7 @@ def html_text(html):
 
 
 def icp_evaluate(text, domain=""):
-    """Return {ok, score, strong, negatives} — site Rayvice ke target provider jaisi hai ya nahi."""
+    """Return {ok, score, strong, negatives} — site Rayvice ke target customer jaisi hai ya nahi."""
     t = " " + re.sub(r"\s+", " ", (text or "").lower()) + " "
     strong = {s for s in STRONG_SIGNALS if s in t}
     for rx in STRONG_REGEX:
@@ -153,7 +172,8 @@ def icp_evaluate(text, domain=""):
     negs = [n for n in HARD_NEGATIVES if n in t]
     soft = [n for n in SOFT_NEGATIVES if n in t]
     score = min(len(strong), 3) * 3 + min(len(med), 3) - 2 * len(soft)
-    ok = bool(strong) and score >= 4 and not negs
+    ndis_ctx = bool(NDIS_CONTEXT_RE.search(t))
+    ok = ndis_ctx and len(strong) >= 2 and score >= 6 and not negs
     return {"ok": ok, "score": score, "strong": sorted(strong), "negatives": negs,
             "soft_negatives": soft}
 
@@ -210,7 +230,15 @@ def _robots(page_html):
 
 def _fetch(url, timeout=10):
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; RayviceBot/1.0)"})
+        # Browser-like UA: kai provider sites Cloudflare/WAF se generic bot UAs ko
+        # block kar deti hain (leads miss ho jaate the). robots.txt phir bhi respect
+        # hota hai (_fetch_path me can_fetch check).
+        req = urllib.request.Request(url, headers={
+            "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                           "(KHTML, like Gecko) Chrome/122.0 Safari/537.36"),
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-AU,en;q=0.9",
+        })
         with urllib.request.urlopen(req, timeout=timeout) as r:
             ctype = r.headers.get("Content-Type", "")
             if "html" not in ctype.lower() and "text" not in ctype.lower():
@@ -337,10 +365,11 @@ def discover_from_site(domain):
     return ev["email"], ev["source_url"], ev["title"]
 
 
-def find_candidates(states, per_query=6, max_candidates=90, day=None):
+def find_candidates(states, per_query=8, max_candidates=200, day=None):
     """Web search -> candidate provider domains (blocklist filtered, deduped).
 
     Roz rotating city queries use hote hain taaki naye domains milte rahein.
+    max_candidates bada hai kyunki 30/day quota ke liye kaafi evaluate karne padte hain.
     """
     seen, out = set(), []
     for q, state in _queries_for(states, day):

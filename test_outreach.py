@@ -151,6 +151,37 @@ def t_icp_soft_negative_penalty():
     assert r["ok"], r  # real provider with footer legal link still passes
 
 
+def t_icp_solo_worker_accept():
+    text = ("I'm an NDIS support worker based in Geelong. I provide community access and "
+            "in-home support for NDIS participants, with self-managed and plan-managed "
+            "clients welcome. Contact me to chat about your goals.")
+    r = sources.icp_evaluate(text, "sarahsupport.com.au")
+    assert r["ok"], r
+
+
+def t_icp_rejects_single_ndis_mention():
+    # ek hi "NDIS" mention kaafi nahi — ye cleaning business target nahi hai
+    text = ("Professional cleaning services in Sydney. We also offer NDIS cleaning for "
+            "participants. Book online today. House cleaning, office cleaning and end of "
+            "lease cleaning.")
+    r = sources.icp_evaluate(text, "sparkleclean.com.au")
+    assert not r["ok"], r
+
+
+def t_icp_rejects_plan_manager():
+    text = ("We are an NDIS plan manager. Our plan management services process invoices "
+            "from your providers and support workers. As your plan manager we handle "
+            "plan management fees and payments for participants.")
+    assert not sources.icp_evaluate(text, "planpay.com.au")["ok"]
+
+
+def t_icp_rejects_registration_consultant():
+    text = ("NDIS provider registration services. We help you become a registered NDIS "
+            "provider with audit-ready policies, registration support and compliance "
+            "templates. Book a free consult with our team.")
+    assert not sources.icp_evaluate(text, "ndisreghelp.com.au")["ok"]
+
+
 def t_aussie_gate():
     assert sources._aussie_ok("brightcare.com.au")
     assert sources._aussie_ok("support.org.au")
@@ -285,6 +316,10 @@ ok("icp-reject-irrelevant", t_icp_rejects_irrelevant)
 ok("aussie-gate", t_aussie_gate)
 ok("icp-footer-noise", t_icp_footer_noise_allowed)
 ok("icp-soft-negative", t_icp_soft_negative_penalty)
+ok("icp-solo-worker", t_icp_solo_worker_accept)
+ok("icp-reject-single-mention", t_icp_rejects_single_ndis_mention)
+ok("icp-reject-plan-manager", t_icp_rejects_plan_manager)
+ok("icp-reject-registration", t_icp_rejects_registration_consultant)
 ok("retry-no-compose", t_retry_no_compose)
 ok("provider-groq", t_provider_groq_registered)
 ok("followup-columns", t_followup_columns)
